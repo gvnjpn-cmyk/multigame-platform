@@ -327,7 +327,7 @@ function buildRoles(n) {
 // ── STATE ────────────────────────────────────────────────────────
 const S = {
   myId: localStorage.getItem('maf_id')||genId(),
-  myName:'',roomCode:'',isHost:false,mode:'online',
+  myName:'',roomCode:'',isHost:false,hostMode:'player',mode:'online',
   room:null,unsubFn:null,
   // offline
   oPlayers:[],oRound:1,oPhase:'distribute',
@@ -353,7 +353,7 @@ const FB=initFB();
 function genId(){return'm'+Math.random().toString(36).slice(2,9)+Date.now().toString(36);}
 function genCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ';let r='';for(let i=0;i<4;i++)r+=c[Math.floor(Math.random()*c.length)];return r;}
 function shuffle(a){return[...a].sort(()=>Math.random()-.5);}
-function aliveList(ps){return Object.entries(ps).filter(([,p])=>p.isAlive).sort((a,b)=>(a[1].joinedAt||0)-(b[1].joinedAt||0));}
+function aliveList(ps){return Object.entries(ps).filter(([,p])=>p.isAlive&&p.role!=='moderator').sort((a,b)=>(a[1].joinedAt||0)-(b[1].joinedAt||0));}
 function toast(msg,d=2500){const e=document.getElementById('toast');e.textContent=msg;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),d);}
 function render(h){document.getElementById('app').innerHTML=`<div class="fade">${h}</div>`;}
 function $(id){return document.getElementById(id);}
@@ -362,15 +362,17 @@ function openGuide(){document.getElementById('guide').classList.add('open');}
 function closeGuide(){document.getElementById('guide').classList.remove('open');}
 
 // ── FIREBASE OPS ─────────────────────────────────────────────────
-async function fbCreate(name){
+async function fbCreate(name,hostMode){
   let code,exists=true;
   while(exists){code=genCode();const s=await db.ref(`maf_rooms/${code}`).once('value');exists=s.exists()&&s.val().status!=='gameover';}
   const now=Date.now();
+  const isMod=hostMode==='moderator';
   await db.ref(`maf_rooms/${code}`).set({
-    code,hostId:S.myId,status:'lobby',round:1,
+    code,hostId:S.myId,status:'lobby',round:1,hostMode:hostMode||'player',
     winner:null,winReason:'',nightKills:null,detResult:null,
     eliminated:null,votes:null,isTie:false,createdAt:now,
-    players:{[S.myId]:{name,isAlive:true,role:'',hasSeenRole:false,hasActed:false,hasVoted:false,joinedAt:now}}
+    players:{[S.myId]:{name,isAlive:!isMod,role:isMod?'moderator':'',
+      hasSeenRole:isMod,hasActed:isMod,hasVoted:isMod,isModerator:isMod,joinedAt:now}}
   });
   return code;
 }
@@ -392,20 +394,30 @@ function fbListen(code){
 }
 async function fbStart(){
   const r=S.room,pids=Object.keys(r.players);
-  if(pids.length<4){toast('Minimal 4 pemain!');return;}
-  const roles=buildRoles(pids.length);
+  const isMod=r.hostMode==='moderator';
+  const playerPids=isMod?pids.filter(id=>id!==r.hostId):pids;
+  const minP=isMod?4:4;
+  if(playerPids.length<minP){toast(`Minimal ${minP} pemain!`);return;}
+  const roles=buildRoles(playerPids.length);
   const u={};
-  pids.forEach((id,i)=>{
+  playerPids.forEach((id,i)=>{
     u[`players/${id}/role`]=roles[i];u[`players/${id}/hasSeenRole`]=false;
     u[`players/${id}/hasActed`]=false;u[`players/${id}/hasVoted`]=false;u[`players/${id}/isAlive`]=true;
   });
+  // Moderator host stays as moderator
+  if(isMod){
+    u[`players/${r.hostId}/role`]='moderator';u[`players/${r.hostId}/hasSeenRole`]=true;
+    u[`players/${r.hostId}/hasActed`]=true;u[`players/${r.hostId}/hasVoted`]=true;u[`players/${r.hostId}/isAlive`]=false;
+  }
   u.status='distribute';u.round=1;u.winner=null;u.winReason='';u.eliminated=null;u.nightKills=null;u.votes=null;u.isTie=false;
   await db.ref(`maf_rooms/${S.roomCode}`).update(u);
 }
 async function fbSeenRole(){
   await db.ref(`maf_rooms/${S.roomCode}/players/${S.myId}/hasSeenRole`).set(true);
   const s=await db.ref(`maf_rooms/${S.roomCode}/players`).once('value');
-  if(Object.values(s.val()).every(p=>p.hasSeenRole)){
+  const ps=s.val();
+  const nonMod=Object.values(ps).filter(p=>p.role!=='moderator');
+  if(nonMod.every(p=>p.hasSeenRole)){
     await db.ref(`maf_rooms/${S.roomCode}`).update({status:'night'});
   }
 }
@@ -469,7 +481,7 @@ async function fbStartDay(){
   await db.ref(`maf_rooms/${S.roomCode}`).update(u);
 }
 function checkWin(ps){
-  const al=Object.entries(ps).filter(([,p])=>p.isAlive);
+  const al=Object.entries(ps).filter(([,p])=>p.isAlive&&p.role!=='moderator');
   const mafia=al.filter(([,p])=>p.role==='mafia');
   const sk=al.filter(([,p])=>p.role==='sk');
   const village=al.filter(([,p])=>p.role!=='mafia'&&p.role!=='sk');
@@ -479,6 +491,8 @@ function checkWin(ps){
   return null;
 }
 async function fbVote(targetId){
+  const me=S.room?.players[S.myId];
+  if(me?.role==='moderator')return;
   await db.ref(`maf_rooms/${S.roomCode}/votes/${S.myId}`).set(targetId);
   await db.ref(`maf_rooms/${S.roomCode}/players/${S.myId}/hasVoted`).set(true);
   const s=await db.ref(`maf_rooms/${S.roomCode}`).once('value');
@@ -486,7 +500,7 @@ async function fbVote(targetId){
   if(al.every(([id])=>r.players[id].hasVoted))await resolveDayVote(r);
 }
 async function resolveDayVote(r){
-  const votes=r.votes||{};const al=aliveList(r.players);const t={};
+  const votes=r.votes||{};const al=aliveList(r.players).filter(([,p])=>p.role!=='moderator');const t={};
   al.forEach(([id])=>{t[id]=0;});Object.values(votes).forEach(tid=>{if(t[tid]!==undefined)t[tid]++;});
   const max=Math.max(...Object.values(t));const tied=Object.entries(t).filter(([,c])=>c===max).map(([id])=>id);
   const eId=tied[Math.floor(Math.random()*tied.length)];
@@ -513,7 +527,15 @@ async function fbConfirmElim(){
 async function fbPlayAgain(){
   if(!S.isHost)return;
   const r=S.room,pids=Object.keys(r.players),u={};
-  pids.forEach(id=>{u[`players/${id}/role`]='';u[`players/${id}/isAlive`]=true;u[`players/${id}/hasSeenRole`]=false;u[`players/${id}/hasActed`]=false;u[`players/${id}/hasVoted`]=false;});
+  const isMod=r.hostMode==='moderator';
+  pids.forEach(id=>{
+    const isModerator=isMod&&id===r.hostId;
+    u[`players/${id}/role`]=isModerator?'moderator':'';
+    u[`players/${id}/isAlive`]=!isModerator;
+    u[`players/${id}/hasSeenRole`]=isModerator;
+    u[`players/${id}/hasActed`]=isModerator;
+    u[`players/${id}/hasVoted`]=isModerator;
+  });
   u.status='lobby';u.round=1;u.winner=null;u.winReason='';u.eliminated=null;u.nightKills=null;u.votes=null;
   await db.ref(`maf_rooms/${S.roomCode}`).update(u);
 }
@@ -571,11 +593,39 @@ function rHome(){
   setTimeout(()=>{const e=$('ni');if(e&&!S.myName)e.focus();},100);
 }
 
-async function onCreate(){
+function onCreate(){
   const n=($('ni')?.value||'').trim()||S.myName;
   if(!n){toast('Masukkan namamu!');return;}
-  S.myName=n;render(`<div class="loader"><div class="loader-ring"></div><p>Membuat room...</p></div>`);
-  try{const c=await fbCreate(n);S.roomCode=c;S.isHost=true;S.mode='online';fbListen(c);}
+  S.myName=n;
+  render(`
+    <div class="fade" style="padding-top:20px">
+      <div class="ph"><div class="ey">Buat Room</div><h1>Pilih Mode Host</h1><div class="sub">Bagaimana kamu ingin berpartisipasi?</div></div>
+      <div class="card c-ora" style="cursor:pointer" onclick="doCreate('player')">
+        <div style="display:flex;gap:14px;align-items:flex-start">
+          <div style="font-size:36px">🎭</div>
+          <div>
+            <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800;margin-bottom:4px;color:var(--orange)">Mode Pemain</div>
+            <div style="font-size:13px;color:var(--text2);line-height:1.5">Kamu ikut main dan dapat peran acak seperti pemain lain</div>
+          </div>
+        </div>
+      </div>
+      <div class="card c-red" style="cursor:pointer;margin-top:0" onclick="doCreate('moderator')">
+        <div style="display:flex;gap:14px;align-items:flex-start">
+          <div style="font-size:36px">🎙️</div>
+          <div>
+            <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800;margin-bottom:4px;color:var(--red)">Mode Moderator</div>
+            <div style="font-size:13px;color:var(--text2);line-height:1.5">Kamu tidak dapat peran — khusus jalankan & kontrol alur game</div>
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-ghost" onclick="rHome()" style="margin-top:6px">← Kembali</button>
+    </div>
+  `);
+}
+async function doCreate(hostMode){
+  S.hostMode=hostMode;
+  render(`<div class="loader"><div class="loader-ring"></div><p>Membuat room...</p></div>`);
+  try{const c=await fbCreate(S.myName,hostMode);S.roomCode=c;S.isHost=true;S.mode='online';fbListen(c);}
   catch(e){toast('Gagal: '+e.message);rHome();}
 }
 async function onJoin(){
@@ -595,7 +645,9 @@ function copyCode(c){navigator.clipboard?.writeText(c).then(()=>toast('✅ Kode 
 function rLobby(){
   const r=S.room,ps=r.players||{};
   const pids=Object.keys(ps).sort((a,b)=>(ps[a].joinedAt||0)-(ps[b].joinedAt||0));
-  const pc=pids.length,dist=getRoleDist(pc);
+  const isMod=r.hostMode==='moderator';
+  const pc=isMod?pids.filter(id=>id!==r.hostId).length:pids.length;
+  const dist=getRoleDist(pc);
   const vill=pc-Object.values(dist).reduce((a,b)=>a+b,0);
   render(`
     <div class="ph" style="margin-top:6px"><div class="ey">Lobby</div><h1>Waiting Room</h1></div>
@@ -612,9 +664,9 @@ function rLobby(){
       </div>
       ${pids.map(id=>`
         <div class="pi">
-          <div style="display:flex;gap:8px;align-items:center">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
             <span style="font-weight:500">${esc(ps[id].name)}</span>
-            ${id===r.hostId?'<span class="badge b-ora">Host</span>':''}
+            ${id===r.hostId&&r.hostMode==='moderator'?'<span class="badge b-red">🎙️ Moderator</span>':id===r.hostId?'<span class="badge b-ora">Host</span>':''}
             ${id===S.myId?'<span class="badge b-dim">Kamu</span>':''}
           </div>
           ${S.isHost&&id!==S.myId?`<button onclick="fbKick('${id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;font-weight:600">Kick</button>`:'<span style="width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block"></span>'}
@@ -633,6 +685,7 @@ function rLobby(){
         <div class="rdist-item"><span class="ri2">👤</span><span class="rc">${Math.max(0,vill)}</span>Warga</div>
       </div>
     </div>`:''}
+    ${r.hostMode==='moderator'&&S.isHost?`<div style="display:flex;align-items:center;gap:6px;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.25);border-radius:10px;padding:10px 14px;margin-bottom:8px;font-size:12px;color:var(--red)">🎙️ Kamu sebagai Moderator — tidak dapat peran</div>`:''}
     ${S.isHost?`<button class="btn btn-red" ${pc>=4?'':'disabled'} onclick="fbStart()">▶ Mulai Game · ${pc} Pemain</button>`
       :`<div class="card" style="text-align:center;padding:20px"><div class="wp"><span></span><span></span><span></span></div><p style="font-size:13px;color:var(--text2);margin-top:8px">Menunggu host memulai...</p></div>`}
     <button class="btn btn-ghost" onclick="leaveRoom()" style="margin-top:6px">← Keluar</button>
@@ -643,6 +696,29 @@ function rLobby(){
 // ── DISTRIBUTE ───────────────────────────────────────────────────
 function rDist(){
   const r=S.room,me=r.players[S.myId];if(!me)return;
+  // Moderator sees waiting screen
+  if(me.role==='moderator'){
+    const ps=r.players;const nonMod=Object.entries(ps).filter(([,p])=>p.role!=='moderator');
+    const allSeen=nonMod.every(([,p])=>p.hasSeenRole);
+    render(`
+      <div class="ph" style="margin-top:6px"><div class="ey">🎙️ Moderator</div><h1>Pemain Lihat Peran</h1></div>
+      <div class="card c-red" style="text-align:center;padding:22px">
+        <div style="font-size:40px;margin-bottom:10px">🎙️</div>
+        <p style="font-weight:600;color:var(--red)">Kamu adalah Moderator</p>
+        <p style="font-size:13px;color:var(--text2);margin-top:6px">Tunggu semua pemain selesai lihat peran mereka</p>
+      </div>
+      <div class="card">
+        <div class="lbl">Status Pemain</div>
+        ${nonMod.map(([id,p])=>`
+          <div class="pi">
+            <span>${esc(p.name)}</span>
+            ${p.hasSeenRole?'<span style="color:var(--green);font-size:12px;font-weight:600">✓ Siap</span>'
+              :'<div class="wp" style="gap:3px"><span style="width:4px;height:4px"></span><span style="width:4px;height:4px"></span><span style="width:4px;height:4px"></span></div>'}
+          </div>`).join('')}
+      </div>
+    `);
+    return;
+  }
   const role=ROLES[me.role]||{};
   const colorMap={mafia:'c-red',doctor:'c-blue',detective:'c-yel',jester:'c-pink',bodyguard:'c-ora',sk:'c-pur',villager:'c-grn'};
   render(`
@@ -694,6 +770,8 @@ function doRevealRole(){
 // ── NIGHT (ONLINE) ───────────────────────────────────────────────
 function rNight(){
   const r=S.room,me=r.players[S.myId];
+  // Moderator sees full control panel
+  if(me&&me.role==='moderator'){rNightModerator();return;}
   if(!me||!me.isAlive){render(`<div class="ph"><div class="ey">🌙 Malam ${r.round}</div><h1>Kamu Sudah Mati</h1></div><div class="card" style="text-align:center;padding:28px"><div style="font-size:56px;margin-bottom:12px">👻</div><p style="color:var(--text2)">Saksikan dari alam sana...</p><div class="wp" style="margin-top:12px"><span></span><span></span><span></span></div></div>`);return;}
   const al=aliveList(r.players);const role=me.role;const roleDef=ROLES[role]||{};
 
@@ -745,6 +823,44 @@ function rNight(){
   `);
 }
 
+// ── NIGHT MODERATOR VIEW ─────────────────────────────────────────
+function rNightModerator(){
+  const r=S.room,ps=r.players||{};
+  const al=aliveList(ps).filter(([,p])=>p.role!=='moderator');
+  const na=r.nightActions||{};
+  const hasMafia=al.some(([,p])=>p.role==='mafia');
+  const hasSK=al.some(([,p])=>p.role==='sk');
+  const hasBG=al.some(([,p])=>p.role==='bodyguard');
+  const hasDoc=al.some(([,p])=>p.role==='doctor');
+  const hasDet=al.some(([,p])=>p.role==='detective');
+  // Check who has acted
+  const needAct=al.filter(([,p])=>['mafia','sk','bodyguard','doctor','detective'].includes(p.role));
+  const actedCount=needAct.filter(([id])=>ps[id].hasActed).length;
+  const allActed=needAct.every(([id])=>ps[id].hasActed);
+  const mafNames=al.filter(([,p])=>p.role==='mafia').map(([,p])=>esc(p.name)).join(', ');
+  render(`
+    <div class="sbar fade"><span class="phase">🌙 Malam ${r.round||1}</span><span class="cod">${esc(r.code)}</span></div>
+    <div class="ph"><div class="ey">🎙️ Moderator</div><h1>Fase Malam</h1><div class="sub">${actedCount}/${needAct.length} aksi terkirim</div></div>
+    <div class="card" style="padding:14px">
+      <div class="lbl">Status Aksi</div>
+      ${needAct.map(([id,p])=>`
+        <div class="pi">
+          <span>${ROLES[p.role]?.icon||'?'} ${esc(p.name)}</span>
+          ${ps[id].hasActed
+            ?'<span style="color:var(--green);font-size:12px;font-weight:600">✓ Sudah aksi</span>'
+            :'<div class="wp" style="gap:3px"><span style="width:4px;height:4px"></span><span style="width:4px;height:4px"></span><span style="width:4px;height:4px"></span></div>'}
+        </div>`).join('')}
+    </div>
+    ${allActed?`<button class="btn btn-ora" onclick="modResolveNight()">☀️ Resolusi Malam → Pagi</button>`
+      :`<div class="card" style="text-align:center;padding:16px"><div class="wp"><span></span><span></span><span></span></div><p style="font-size:13px;color:var(--text2);margin-top:8px">Menunggu semua pemain selesai aksi...</p></div>`}
+  `);
+}
+
+async function modResolveNight(){
+  // Trigger night resolution — same as checkNightDone but called by moderator
+  await checkNightDone();
+}
+
 // ── DAY REVEAL ───────────────────────────────────────────────────
 function rDayReveal(){
   const r=S.room,me=r.players[S.myId];
@@ -789,8 +905,13 @@ function rDay(){
   render(`
     <div class="sbar fade"><span class="phase">☀️ Siang Ronde ${r.round||1}</span><span class="cod">${esc(r.code)}</span></div>
     <div class="ph"><div class="ey">Diskusi & Vote</div><h1>${me?.hasVoted?'Vote Terkirim':'Vote Siapa yang Dicurigai?'}</h1></div>
-    ${!me?.isAlive?`<div class="card" style="text-align:center;padding:24px"><div style="font-size:48px;margin-bottom:10px">👻</div><p style="color:var(--text2)">Kamu sudah mati, saksikan saja</p></div>`
-    :me?.hasVoted?`
+    ${me?.role==='moderator'?`
+      <div class="card" style="padding:14px">
+        <div class="lbl">Status Vote</div>
+        ${al.map(([id,p])=>`<div class="pi"><span>${esc(p.name)}</span>${p.hasVoted?'<span style="color:var(--green);font-size:12px">✓ Vote</span>':'<div class="wp" style="gap:3px"><span style="width:4px;height:4px"></span><span style="width:4px;height:4px"></span><span style="width:4px;height:4px"></span></div>'}</div>`).join('')}
+      </div>
+    `:!me?.isAlive?`<div class="card" style="text-align:center;padding:24px"><div style="font-size:48px;margin-bottom:10px">👻</div><p style="color:var(--text2)">Kamu sudah mati, saksikan saja</p></div>`
+    :me?.role==='moderator'?'':me?.hasVoted?`
       <div class="card c-grn" style="text-align:center;padding:24px">
         <div style="font-size:40px;margin-bottom:10px">✅</div>
         <p style="font-weight:600;color:var(--green)">Vote terkirim!</p>
@@ -857,7 +978,7 @@ function rGameover(){
       <p style="text-align:center;font-size:13px;color:var(--text2);margin:8px 0 22px">${esc(r.winReason)}</p>
       <div class="card">
         <div class="lbl">Identitas Semua Pemain</div>
-        ${Object.entries(ps).sort((a,b)=>(a[1].joinedAt||0)-(b[1].joinedAt||0)).map(([id,p])=>{
+        ${Object.entries(ps).filter(([,p])=>p.role!=='moderator').sort((a,b)=>(a[1].joinedAt||0)-(b[1].joinedAt||0)).map(([id,p])=>{
           const role=ROLES[p.role]||{icon:'?',name:'?',color:'var(--text)'};
           return`<div class="pi ${!p.isAlive?'dead':''}">
             <div style="display:flex;align-items:center;gap:8px">

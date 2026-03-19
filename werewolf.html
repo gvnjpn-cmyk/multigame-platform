@@ -388,6 +388,7 @@ async function fbJoin(code,name){
 }
 function fbListen(code){
   if(S.unsubFn)S.unsubFn();
+  saveSession(code, S.isHost);
   const ref=db.ref(`maf_rooms/${code}`);
   const h=ref.on('value',snap=>{if(!snap.exists())return;S.room=snap.val();renderPhase();});
   S.unsubFn=()=>ref.off('value',h);
@@ -638,7 +639,7 @@ async function onJoin(){
   catch(e){toast('Gagal: '+e.message);rHome();}
 }
 function onOffline(){S.myName=($('ni')?.value||'').trim()||S.myName||'Moderator';S.mode='offline';rOffSetup();}
-function leaveRoom(){if(S.unsubFn){S.unsubFn();S.unsubFn=null;}S.room=null;S.roomCode='';S.isHost=false;S.mode='online';rHome();}
+function leaveRoom(){if(S.unsubFn){S.unsubFn();S.unsubFn=null;}clearSession();S.room=null;S.roomCode='';S.isHost=false;S.mode='online';rHome();}
 function copyCode(c){navigator.clipboard?.writeText(c).then(()=>toast('✅ Kode disalin!')).catch(()=>toast('Kode: '+c));}
 
 // ── LOBBY ────────────────────────────────────────────────────────
@@ -965,6 +966,7 @@ function rDayElim(){
 
 // ── GAME OVER ────────────────────────────────────────────────────
 function rGameover(){
+  clearSession();
   const r=S.room,ps=r.players||{};
   const winnerColors={village:'var(--green)',mafia:'var(--red)',sk:'var(--purple)',jester:'var(--pink)'};
   const winnerIcons={village:'🎉',mafia:'🔪',sk:'☠️',jester:'🎭'};
@@ -1298,7 +1300,65 @@ function rOGameover(){
   `);
 }
 
-window.onload=()=>rHome();
+
+  // ── AUTO CLEANUP ─────────────────────────────────────────────────
+  async function cleanupOldRooms(prefix) {
+    if(!db) return;
+    try {
+      const snap = await db.ref(prefix).once('value');
+      if(!snap.exists()) return;
+      const rooms = snap.val();
+      const now = Date.now();
+      const promises = [];
+      Object.entries(rooms).forEach(([code, room]) => {
+        const age = now - (room.createdAt || 0);
+        const isGameover = room.status === 'gameover';
+        const isOld = age > 6 * 60 * 60 * 1000; // 6 jam
+        const isEndedOld = isGameover && age > 30 * 60 * 1000; // 30 menit setelah gameover
+        if(isOld || isEndedOld) {
+          promises.push(db.ref(`${prefix}/${code}`).remove());
+        }
+      });
+      if(promises.length > 0) await Promise.all(promises);
+    } catch(e) { /* silent fail */ }
+  }
+
+
+  // ── SESSION PERSISTENCE ──────────────────────────────────────────
+  function saveSession(roomCode, isHost) {
+    localStorage.setItem('session_room_' + ROOM_PREFIX, roomCode);
+    localStorage.setItem('session_host_' + ROOM_PREFIX, isHost ? '1' : '0');
+  }
+  function clearSession() {
+    localStorage.removeItem('session_room_' + ROOM_PREFIX);
+    localStorage.removeItem('session_host_' + ROOM_PREFIX);
+  }
+  async function tryResumeSession() {
+    const code = localStorage.getItem('session_room_' + ROOM_PREFIX);
+    const isHost = localStorage.getItem('session_host_' + ROOM_PREFIX) === '1';
+    if (!code || !FB) return false;
+    try {
+      const snap = await db.ref(`${ROOM_PREFIX}/${code}`).once('value');
+      if (!snap.exists()) { clearSession(); return false; }
+      const room = snap.val();
+      // Room still valid (not gameover more than 1 min ago)
+      if (room.status === 'gameover') { clearSession(); return false; }
+      // Check if I'm still in the room
+      if (!room.players || !room.players[S.myId]) { clearSession(); return false; }
+      // Rejoin!
+      S.roomCode = code;
+      S.isHost = isHost;
+      S.mode = 'online';
+      fbListen(code);
+      return true;
+    } catch(e) { clearSession(); return false; }
+  }
+
+    window.onload=async ()=>{
+    cleanupOldRooms('maf_rooms');
+    const resumed = await tryResumeSession();
+    if (!resumed) rHome();
+  };
 </script>
 </body>
 </html>

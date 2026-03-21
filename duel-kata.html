@@ -75,113 +75,73 @@
 <body>
 <div id="app"><div class="loader"><div class="loader-ring"></div><p>memuat...</p></div></div>
 <div id="toast"></div>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="ws-client.js"></script>
 <script>
-const ROOM_PREFIX='dk_rooms';
 const SYLLABLES=['an','ar','am','at','ak','al','ah','ap','as','au','ai','ia','ie','io','iu','un','ur','um','ut','uk','ul','uh','up','us','in','ir','im','it','ik','il','ih','ip','is','en','er','em','et','ek','el','eh','ep','es','on','or','om','ot','ok','ol','oh','op','os','ba','bi','bu','be','bo','ca','ci','cu','ce','co','da','di','du','de','do','ga','gi','gu','ge','go','ha','hi','hu','he','ho','ja','ji','ju','je','jo','ka','ki','ku','ke','ko','la','li','lu','le','lo','ma','mi','mu','me','mo','na','ni','nu','ne','no','pa','pi','pu','pe','po','ra','ri','ru','re','ro','sa','si','su','se','so','ta','ti','tu','te','to','wa','wi','wu','we','wo','ya','yu','ye','za','zi','zu','ze','zo'];
 const TIMER_START=12;
 const MAX_LIVES=3;
-const S={myId:localStorage.getItem('dk_id')||genId(),myName:'',roomCode:'',isHost:false,mode:'online',room:null,unsubFn:null,timerInterval:null,timerLeft:TIMER_START,oPlayers:[],oSyl:'',oTurn:0,oHistory:[],oCount:4,oNames:Array.from({length:20},(_,i)=>`Pemain ${i+1}`)};
+const S={
+  myId:genId(),
+  myName:'',roomCode:'',isHost:false,mode:'online',
+  room:null,timerInterval:null,timerLeft:0,
+  oCount:4,oNames:Array.from({length:20},(_,i)=>`Pemain ${i+1}`),
+};
 localStorage.setItem('dk_id',S.myId);
-let db=null;
-function initFB(){try{if(!window.FIREBASE_CONFIG||window.FIREBASE_CONFIG.apiKey.startsWith('GANTI'))return false;if(!firebase.apps.length)firebase.initializeApp(window.FIREBASE_CONFIG);db=firebase.database();return true;}catch(e){return false;}}
-const FB=initFB();
-function genId(){return'd'+Math.random().toString(36).slice(2,9)+Date.now().toString(36);}
-function genCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ';let r='';for(let i=0;i<4;i++)r+=c[Math.floor(Math.random()*c.length)];return r;}
-function shuffle(a){return[...a].sort(()=>Math.random()-.5);}
-function randSyl(){return SYLLABLES[Math.floor(Math.random()*SYLLABLES.length)];}
-function toast(msg,d=2500){const e=document.getElementById('toast');e.textContent=msg;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),d);}
-function render(h){
-  if(S._rafId)cancelAnimationFrame(S._rafId);
-  S._rafId=requestAnimationFrame(()=>{
-    const app=document.getElementById('app');
-    if(app)app.innerHTML='<div class="fade">'+h+'</div>';
-  });
-}
-function $(id){return document.getElementById(id);}
-function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function saveSession(c,h){try{localStorage.setItem('session_room_'+ROOM_PREFIX,c);localStorage.setItem('session_host_'+ROOM_PREFIX,h?'1':'0');}catch(e){}}
-function clearSession(){try{localStorage.removeItem('session_room_'+ROOM_PREFIX);localStorage.removeItem('session_host_'+ROOM_PREFIX);}catch(e){}}
-async function cleanupOldRooms(){if(!db)return;try{const snap=await db.ref(ROOM_PREFIX).once('value');if(!snap.exists())return;const rooms=snap.val();const now=Date.now();const ps=[];Object.entries(rooms).forEach(([code,room])=>{const age=now-(room.createdAt||0);if(age>6*60*60*1000||(room.status==='ended'&&age>30*60*1000))ps.push(db.ref(`${ROOM_PREFIX}/${code}`).remove());});if(ps.length)await Promise.all(ps);}catch(e){}}
-async function tryResumeSession(){if(!FB||!db)return false;let code;try{code=localStorage.getItem('session_room_'+ROOM_PREFIX);}catch(e){return false;}if(!code)return false;const isHost=localStorage.getItem('session_host_'+ROOM_PREFIX)==='1';try{const snap=await Promise.race([db.ref(`${ROOM_PREFIX}/${code}`).once('value'),new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),5000))]);if(!snap.exists()){clearSession();return false;}const room=snap.val();if(room.status==='ended'){clearSession();return false;}if(!room.players||!room.players[S.myId]){clearSession();return false;}S.roomCode=code;S.isHost=isHost;S.mode='online';fbListen(code);return true;}catch(e){clearSession();return false;}}
 
-function startTimer(onExpire){stopTimer();S.timerLeft=TIMER_START;S.timerInterval=setInterval(()=>{S.timerLeft=Math.max(0,S.timerLeft-.1);const txt=$('timer-txt');if(txt)txt.textContent=Math.ceil(S.timerLeft);const bomb=$('bomb-icon');if(bomb){if(S.timerLeft<=3)bomb.className='bomb-icon danger';else bomb.className='bomb-icon';}if(S.timerLeft<=0){stopTimer();if(onExpire)onExpire();}},100);}
-function stopTimer(){if(S.timerInterval){clearInterval(S.timerInterval);S.timerInterval=null;}}
-
-async function fbCreate(name){let code,exists=true;while(exists){code=genCode();const s=await db.ref(`${ROOM_PREFIX}/${code}`).once('value');exists=s.exists()&&s.val().status!=='ended';}const now=Date.now();const syl=randSyl();await db.ref(`${ROOM_PREFIX}/${code}`).set({code,hostId:S.myId,status:'lobby',syllable:syl,currentTurn:null,round:1,history:[],usedWords:[],timerStart:null,createdAt:now,players:{[S.myId]:{name,joinedAt:now,lives:MAX_LIVES,alive:true}}});return code;}
-async function fbJoin(code,name){const s=await db.ref(`${ROOM_PREFIX}/${code}`).once('value');if(!s.exists())throw new Error('Room tidak ditemukan');const r=s.val();if(r.status==='ended')throw new Error('Game sudah berakhir');if(Object.keys(r.players||{}).length>=12)throw new Error('Room penuh (maks 12)');if(r.players&&r.players[S.myId]){await db.ref(`${ROOM_PREFIX}/${code}/players/${S.myId}/name`).set(name);return r;}await db.ref(`${ROOM_PREFIX}/${code}/players/${S.myId}`).set({name,joinedAt:Date.now(),lives:MAX_LIVES,alive:true});return r;}
-function fbListen(code){if(S.unsubFn)S.unsubFn();saveSession(code,S.isHost);const ref=db.ref(`${ROOM_PREFIX}/${code}`);const h=ref.on('value',snap=>{
-      if(!snap.exists())return;
-      const prev=S.room;
-      S.room=snap.val();
-      // Skip re-render jika status & data penting tidak berubah
-      if(prev&&prev.status===S.room.status&&JSON.stringify(prev)===JSON.stringify(S.room))return;
-      renderPhase();
-    });S.unsubFn=()=>ref.off('value',h);}
-async function fbStart(){const r=S.room,pids=Object.keys(r.players);if(pids.length<2){toast('Minimal 2 pemain!');return;}const u={};pids.forEach(id=>{u[`players/${id}/lives`]=MAX_LIVES;u[`players/${id}/alive`]=true;});u.status='game';u.currentTurn=pids[0];u.syllable=randSyl();u.round=1;u.history=[];u.usedWords=[];u.timerStart=Date.now();await db.ref(`${ROOM_PREFIX}/${S.roomCode}`).update(u);}
-
-async function fbSubmit(word){
-  const r=S.room;
-  if(r.currentTurn!==S.myId){toast('Bukan giliranmu!');return;}
-  const syl=r.syllable.toLowerCase();
-  const w=word.trim().toLowerCase();
-  if(w.length<2){toast('Minimal 2 huruf!');return;}
-  if(!w.includes(syl)){toast(`Kata harus mengandung "${syl.toUpperCase()}"!`);return;}
-  if((r.usedWords||[]).includes(w)){toast('Kata sudah dipakai!');return;}
-  // Valid word — advance turn
-  const alivePids=Object.keys(r.players).filter(id=>r.players[id].alive).sort((a,b)=>(r.players[a].joinedAt||0)-(r.players[b].joinedAt||0));
-  const myIdx=alivePids.indexOf(S.myId);
-  const nextId=alivePids[(myIdx+1)%alivePids.length];
-  const newHistory=[...(r.history||[]),{player:r.players[S.myId].name,word:w,syl}].slice(-20);
-  const newUsed=[...(r.usedWords||[]),w];
-  const u={currentTurn:nextId,syllable:randSyl(),history:newHistory,usedWords:newUsed,timerStart:Date.now()};
-  await db.ref(`${ROOM_PREFIX}/${S.roomCode}`).update(u);
-  stopTimer();
+const WS=new NoctyraWS();
+function setupWS(){
+  WS.onSync=(serverRoom)=>{
+    if(!serverRoom)return;
+    const players={};(serverRoom.playerList||[]).forEach(p=>{players[p.id]=p;});
+    S.isHost=serverRoom.hostId===WS.playerId;
+    S.room={...serverRoom,...(serverRoom.state||{}),players};
+    renderPhase();
+  };
+  WS.onToast=(msg)=>toast(msg);
+  WS.onError=(msg)=>{toast(msg);rHome();};
 }
 
-async function fbExpired(){
-  // Called when timer runs out for current player
-  const r=S.room;if(!r||r.currentTurn!==S.myId)return;
-  const ps=r.players;const me=ps[S.myId];
-  const newLives=(me?.lives||0)-1;
-  const u={[`players/${S.myId}/lives`]:newLives};
-  if(newLives<=0)u[`players/${S.myId}/alive`]=false;
-  // Check win
-  const fp=Object.fromEntries(Object.entries(ps).map(([k,v])=>[k,{...v}]));fp[S.myId].lives=newLives;if(newLives<=0)fp[S.myId].alive=false;
-  const aliveArr=Object.entries(fp).filter(([,p])=>p.alive);
-  if(aliveArr.length<=1){
-    const winner=aliveArr[0]?.[0]||null;u.winner=winner;u.winReason=winner?`${fp[winner].name} adalah yang terakhir bertahan!`:'Semua eliminasi!';u.status='ended';clearSession();
-  } else {
-    const alivePids=aliveArr.map(([id])=>id).sort((a,b)=>(ps[a].joinedAt||0)-(ps[b].joinedAt||0));
-    const myIdx=alivePids.indexOf(S.myId);const nextId=alivePids[(myIdx)%alivePids.length]||alivePids[0];
-    u.currentTurn=nextId;u.syllable=randSyl();u.timerStart=Date.now();
-  }
-  await db.ref(`${ROOM_PREFIX}/${S.roomCode}`).update(u);
-}
 
-async function fbPlayAgain(){if(!S.isHost)return;const r=S.room;const pids=Object.keys(r.players);const u={};pids.forEach(id=>{u[`players/${id}/lives`]=MAX_LIVES;u[`players/${id}/alive`]=true;});u.status='lobby';u.currentTurn=null;u.syllable=randSyl();u.history=[];u.usedWords=[];u.winner=null;u.winReason='';await db.ref(`${ROOM_PREFIX}/${S.roomCode}`).update(u);}
-async function fbKick(tid){if(!S.isHost||tid===S.myId)return;await db.ref(`${ROOM_PREFIX}/${S.roomCode}/players/${tid}`).remove();toast('Pemain dikeluarkan');}
+function fbStart(){WS.action('start');}
+function fbSubmit(word){WS.action('submit',{word});}
+function fbPlayAgain(){WS.action('restart');}
+function fbKick(tid){WS.action('kick',{targetId:tid});}
+
 
 function renderPhase(){if(S.mode==='offline'){renderOff();return;}const r=S.room;if(!r)return;stopTimer();if(r.status==='lobby')return rLobby();if(r.status==='game')return rGame();if(r.status==='ended')return rEnded();}
 
-function rHome(){render(`<div class="ph" style="margin-top:8px"><div class="ey">⚔️ Duel Kata</div><h1>Bom Kata!</h1><div class="sub">Sebut kata yang mengandung suku kata — sebelum BOM meledak!</div></div><div class="card"><div class="lbl">Nama kamu</div><input id="ni" class="inp" placeholder="Masukkan namamu..." maxlength="20" value="${esc(S.myName)}" oninput="S.myName=this.value.trim()"><div style="font-size:11px;color:var(--text3);margin-top:6px">${FB?'<span style="color:var(--green)">● Firebase terhubung</span>':'<span style="color:var(--red)">● Firebase belum dikonfigurasi</span>'}</div></div>${FB?`<div class="card" style="border-color:rgba(249,115,22,.35);background:rgba(249,115,22,.07)"><div class="lbl">🌐 Online</div><p style="font-size:13px;color:var(--text2);margin-bottom:12px">2–12 pemain, giliran berganti, kata harus mengandung suku kata yang muncul!</p><button class="btn btn-ora" onclick="onCreate()">+ Buat Room Baru</button><div style="display:flex;align-items:center;gap:10px;margin:12px 0;font-size:11px;color:var(--text3)"><div style="flex:1;height:1px;background:var(--border)"></div>atau<div style="flex:1;height:1px;background:var(--border)"></div></div><input id="ci" class="inp inp-code" placeholder="KODE" maxlength="4" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z]/g,'')"><button class="btn btn-ghost" onclick="onJoin()" style="margin-top:8px">→ Join Room</button></div>`:''}
+function rHome(){render(`<div class="ph" style="margin-top:8px"><div class="ey">⚔️ Duel Kata</div><h1>Bom Kata!</h1><div class="sub">Sebut kata yang mengandung suku kata — sebelum BOM meledak!</div></div><div class="card"><div class="lbl">Nama kamu</div><input id="ni" class="inp" placeholder="Masukkan namamu..." maxlength="20" value="${esc(S.myName)}" oninput="S.myName=this.value.trim()"><div style="font-size:11px;color:var(--text3);margin-top:6px"><span style="color:var(--green)">● WebSocket server</span>'}</div></div><div class="card" style="border-color:rgba(249,115,22,.35);background:rgba(249,115,22,.07)"><div class="lbl">🌐 Online</div><p style="font-size:13px;color:var(--text2);margin-bottom:12px">2–12 pemain, giliran berganti, kata harus mengandung suku kata yang muncul!</p><button class="btn btn-ora" onclick="onCreate()">+ Buat Room Baru</button><div style="display:flex;align-items:center;gap:10px;margin:12px 0;font-size:11px;color:var(--text3)"><div style="flex:1;height:1px;background:var(--border)"></div>atau<div style="flex:1;height:1px;background:var(--border)"></div></div><input id="ci" class="inp inp-code" placeholder="KODE" maxlength="4" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z]/g,'')"><button class="btn btn-ghost" onclick="onJoin()" style="margin-top:8px">→ Join Room</button></div>
 <div class="card"><div class="lbl">📱 Offline</div><button class="btn btn-ghost" onclick="onOffline()">▶ Main Offline</button></div>
 <div class="card" style="padding:14px"><div class="lbl">Cara Main</div><p style="font-size:13px;color:var(--text2);line-height:1.7">Suku kata muncul → sebut kata yang mengandung suku kata itu sebelum <b style="color:var(--acc2)">timer ${TIMER_START} detik</b> habis. Gagal = kehilangan 1 nyawa 💀. Punya ${MAX_LIVES} nyawa, habis = eliminasi!</p></div>
 <button class="btn btn-ghost" onclick="location.href='index.html'" style="margin-top:4px">← Kembali ke Hub</button>`);setTimeout(()=>{const e=$('ni');if(e&&!S.myName)e.focus();},100);}
 
-async function onCreate(){const n=($('ni')?.value||'').trim()||S.myName;if(!n){toast('Masukkan namamu!');return;}S.myName=n;render(`<div class="loader"><div class="loader-ring"></div><p>Membuat room...</p></div>`);try{const c=await fbCreate(n);S.roomCode=c;S.isHost=true;S.mode='online';fbListen(c);}catch(e){toast('Gagal: '+e.message);rHome();}}
-async function onJoin(){const n=($('ni')?.value||'').trim()||S.myName;const c=($('ci')?.value||'').toUpperCase().trim();if(!n){toast('Masukkan namamu!');return;}if(c.length!==4){toast('Kode harus 4 huruf!');return;}S.myName=n;render(`<div class="loader"><div class="loader-ring"></div><p>Bergabung...</p></div>`);try{await fbJoin(c,n);S.roomCode=c;S.isHost=false;S.mode='online';fbListen(c);}catch(e){toast('Gagal: '+e.message);rHome();}}
+function onCreate(){
+  const n=($('ni')?.value||'').trim()||S.myName;
+  if(!n){toast('Masukkan namamu!');return;}
+  S.myName=n;S.isHost=true;
+  render('<div class="loader"><div class="loader-ring"></div><p>Membuat room...</p></div>');
+  setupWS();WS.connect(()=>WS.create('duelkata',n));
+}
+function onJoin(){
+  const n=($('ni')?.value||'').trim()||S.myName;
+  const code=($('ci')?.value||'').toUpperCase().trim();
+  if(!n){toast('Masukkan namamu!');return;}
+  if(code.length!==4){toast('Kode harus 4 huruf!');return;}
+  S.myName=n;S.isHost=false;
+  render('<div class="loader"><div class="loader-ring"></div><p>Bergabung...</p></div>');
+  setupWS();WS.connect(()=>WS.join(code,n));
+}
+
 function onOffline(){S.myName=($('ni')?.value||'').trim()||S.myName||'Host';S.mode='offline';rOffSetup();}
-function leaveRoom(){stopTimer();if(S.unsubFn){S.unsubFn();S.unsubFn=null;}clearSession();S.room=null;S.roomCode='';S.isHost=false;S.mode='online';rHome();}
+function leaveRoom(){stopTimer();WS.destroy();S.room=null;S.roomCode='';S.isHost=false;rHome();}
 function copyCode(c){navigator.clipboard?.writeText(c).then(()=>toast('✅ Kode disalin!')).catch(()=>toast('Kode: '+c));}
 
-function rLobby(){const r=S.room,ps=r.players||{};const pids=Object.keys(ps).sort((a,b)=>(ps[a].joinedAt||0)-(ps[b].joinedAt||0));render(`<div class="ph" style="margin-top:6px"><div class="ey">Lobby</div><h1>⚔️ Duel Kata</h1></div><div class="card" style="text-align:center"><div class="lbl">Kode Room</div><div class="rcode">${esc(r.code)}</div><button class="btn btn-ghost" onclick="copyCode('${esc(r.code)}')" style="max-width:180px;margin:0 auto;padding:10px">⎘ Salin Kode</button></div><div class="card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div class="lbl" style="margin:0">Pemain</div><span class="badge b-ora">${pids.length}/12</span></div>${pids.map(id=>`<div class="pi"><div style="display:flex;gap:8px;align-items:center"><span style="font-weight:500">${esc(ps[id].name)}</span>${id===r.hostId?'<span class="badge b-ora">Host</span>':''}${id===S.myId?'<span class="badge b-dim">Kamu</span>':''}</div>${S.isHost&&id!==S.myId?`<button onclick="fbKick('${id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;font-weight:600">Kick</button>`:'<span style="width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block"></span>'}</div>`).join('')}</div>${S.isHost?`<button class="btn btn-ora" ${pids.length>=2?'':'disabled'} onclick="fbStart()">▶ Mulai Game · ${pids.length} Pemain</button>`:`<div class="card" style="text-align:center;padding:20px"><div class="wp"><span></span><span></span><span></span></div><p style="font-size:13px;color:var(--text2);margin-top:8px">Menunggu host memulai...</p></div>`}<button class="btn btn-ghost" onclick="leaveRoom()" style="margin-top:6px">← Keluar</button>`);}
+function rLobby(){const r=S.room,ps=r.players||{};const pids=Object.keys(ps).sort((a,b)=>(ps[a].joinedAt||0)-(ps[b].joinedAt||0));render(`<div class="ph" style="margin-top:6px"><div class="ey">Lobby</div><h1>⚔️ Duel Kata</h1></div><div class="card" style="text-align:center"><div class="lbl">Kode Room</div><div class="rcode">${esc(r.code)}</div><button class="btn btn-ghost" onclick="copyCode('${esc(r.code)}')" style="max-width:180px;margin:0 auto;padding:10px">⎘ Salin Kode</button></div><div class="card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div class="lbl" style="margin:0">Pemain</div><span class="badge b-ora">${pids.length}/12</span></div>${pids.map(id=>`<div class="pi"><div style="display:flex;gap:8px;align-items:center"><span style="font-weight:500">${esc(ps[id].name)}</span>${id===r.hostId?'<span class="badge b-ora">Host</span>${id===WS.playerId||S.myId?'<span class="badge b-dim">Kamu</span></div>${S.isHost&&id!==WS.playerId||S.myId?`<button onclick="fbKick('${id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;font-weight:600">Kick</button>`:'<span style="width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block"></span>'}</div>`).join('')}</div>${S.isHost?`<button class="btn btn-ora" ${pids.length>=2?'':'disabled'} onclick="fbStart()">▶ Mulai Game · ${pids.length} Pemain</button>`:`<div class="card" style="text-align:center;padding:20px"><div class="wp"><span></span><span></span><span></span></div><p style="font-size:13px;color:var(--text2);margin-top:8px">Menunggu host memulai...</p></div>`}<button class="btn btn-ghost" onclick="leaveRoom()" style="margin-top:6px">← Keluar</button>`);}
 
-function rGame(){const r=S.room;const me=r.players[S.myId];const isMyTurn=r.currentTurn===S.myId;const ps=r.players;const pids=Object.keys(ps).sort((a,b)=>(ps[a].joinedAt||0)-(ps[b].joinedAt||0));if(isMyTurn)startTimer(()=>fbExpired());
+function rGame(){const r=S.room;const me=r.players[WS.playerId||S.myId];const isMyTurn=r.currentTurn===WS.playerId||S.myId;const ps=r.players;const pids=Object.keys(ps).sort((a,b)=>(ps[a].joinedAt||0)-(ps[b].joinedAt||0));if(isMyTurn)startTimer(()=>fbExpired());
 render(`<div class="sbar fade"><span class="rnd">⚔️ Duel Kata</span><span style="font-size:11px;color:var(--text2)">${esc(r.code)}</span></div>
 <div class="bomb-area">
-  <span id="bomb-icon" class="bomb-icon ${isMyTurn&&S.timerLeft<=3?'danger':''}">💣</span>
+  <span id="bomb-icon" class="bomb-icon ${isMyTurn&&S.timerLeft<=3?'danger">💣</span>
   <div class="syllable-box"><div class="syllable-txt">${esc((r.syllable||'').toUpperCase())}</div></div>
   <div style="font-size:12px;color:var(--text2);margin-bottom:8px">Kata harus mengandung suku kata ini</div>
   <div id="timer-txt" style="font-family:'Syne',sans-serif;font-size:32px;font-weight:800;color:${isMyTurn?'var(--acc)':'var(--text3)'};">${Math.ceil(S.timerLeft)}</div>
@@ -191,13 +151,13 @@ ${isMyTurn?`<div style="position:relative"><input id="word-inp" class="word-inp"
 <div class="card" style="padding:14px">
   <div class="lbl">Pemain</div>
   <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">
-    ${pids.map(id=>{const p=ps[id];const isActive=r.currentTurn===id;const lives=p.alive?p.lives:0;return`<div style="background:${isActive?'rgba(249,115,22,.15)':'rgba(255,255,255,.04)'};border:1.5px solid ${isActive?'rgba(249,115,22,.5)':'var(--border)'};border-radius:12px;padding:8px 12px;text-align:center;min-width:80px"><div style="font-size:12px;font-weight:600;${!p.alive?'text-decoration:line-through;opacity:.4':''}">${esc(p.name)}</div><div class="lives-row">${Array.from({length:MAX_LIVES}).map((_,i)=>`<span class="life">${i<lives?'❤️':'💀'}</span>`).join('')}</div></div>`;}).join('')}
+    ${pids.map(id=>{const p=ps[id];const isActive=r.currentTurn===id;const lives=p.alive?p.lives:0;return`<div style="background:${isActive?'rgba(249,115,22,.15)':'rgba(255,255,255,.04)'};border:1.5px solid ${isActive?'rgba(249,115,22,.5)':'var(--border)'};border-radius:12px;padding:8px 12px;text-align:center;min-width:80px"><div style="font-size:12px;font-weight:600;${!p.alive?'text-decoration:line-through;opacity:.4">${esc(p.name)}</div><div class="lives-row">${Array.from({length:MAX_LIVES}).map((_,i)=>`<span class="life">${i<lives?'❤️':'💀'}</span>`).join('')}</div></div>`;}).join('')}
   </div>
 </div>
-${(r.history||[]).length>0?`<div class="card" style="padding:14px"><div class="lbl">Kata Terakhir</div><div style="margin-top:6px">${[...(r.history||[])].reverse().slice(0,8).map(h=>`<span class="history-chip">🗣 ${esc(h.player)}: <b>${esc(h.word)}</b></span>`).join('')}</div></div>`:''}`);
+${(r.history||[]).length>0?`<div class="card" style="padding:14px"><div class="lbl">Kata Terakhir</div><div style="margin-top:6px">${[...(r.history||[])].reverse().slice(0,8).map(h=>`<span class="history-chip">🗣 ${esc(h.player)}: <b>${esc(h.word)}</b></span>`).join('')}</div></div>`);
 setTimeout(()=>{if(isMyTurn)$('word-inp')?.focus();},100);}
 
-function rEnded(){clearSession();const r=S.room,ps=r.players;const sorted=Object.entries(ps).sort((a,b)=>(b[1].lives||0)-(a[1].lives||0));const medals=['🥇','🥈','🥉'];render(`<div style="padding-top:16px;animation:fadeUp .4s ease both;text-align:center"><div style="font-size:60px;margin-bottom:10px">💥</div><div style="font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:var(--acc2)">${esc(r.winReason||'Game Selesai!')}</div><div class="card" style="text-align:left;margin-top:20px"><div class="lbl">Hasil Akhir</div>${sorted.map(([id,p],i)=>`<div class="pi" style="${p.alive?'border-color:rgba(249,115,22,.4);background:rgba(249,115,22,.08)':''}"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:16px">${p.alive?medals[i]||'':'💀'}</span><span style="font-weight:500">${esc(p.name)}${id===S.myId?' <span class="badge b-dim" style="font-size:9px">Kamu</span>':''}</span></div><div class="lives-row">${Array.from({length:MAX_LIVES}).map((_,i)=>`<span class="life">${i<(p.lives||0)?'❤️':'💀'}</span>`).join('')}</div></div>`).join('')}</div>${S.isHost?`<button class="btn btn-ora" onclick="fbPlayAgain()">↺ Main Lagi</button>`:`<div class="card" style="padding:16px;text-align:center"><div class="wp"><span></span><span></span><span></span></div></div>`}<button class="btn btn-ghost" onclick="leaveRoom()" style="margin-top:6px">← Menu Utama</button></div>`);}
+function rEnded(){clearSession();const r=S.room,ps=r.players;const sorted=Object.entries(ps).sort((a,b)=>(b[1].lives||0)-(a[1].lives||0));const medals=['🥇','🥈','🥉'];render(`<div style="padding-top:16px;animation:fadeUp .4s ease both;text-align:center"><div style="font-size:60px;margin-bottom:10px">💥</div><div style="font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:var(--acc2)">${esc(r.winReason||'Game Selesai!')}</div><div class="card" style="text-align:left;margin-top:20px"><div class="lbl">Hasil Akhir</div>${sorted.map(([id,p],i)=>`<div class="pi" style="${p.alive?'border-color:rgba(249,115,22,.4);background:rgba(249,115,22,.08)"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:16px">${p.alive?medals[i]||'':'💀'}</span><span style="font-weight:500">${esc(p.name)}${id===WS.playerId||S.myId?' <span class="badge b-dim" style="font-size:9px">Kamu</span></span></div><div class="lives-row">${Array.from({length:MAX_LIVES}).map((_,i)=>`<span class="life">${i<(p.lives||0)?'❤️':'💀'}</span>`).join('')}</div></div>`).join('')}</div>${S.isHost?`<button class="btn btn-ora" onclick="fbPlayAgain()">↺ Main Lagi</button>`:`<div class="card" style="padding:16px;text-align:center"><div class="wp"><span></span><span></span><span></span></div></div>`}<button class="btn btn-ghost" onclick="leaveRoom()" style="margin-top:6px">← Menu Utama</button></div>`);}
 
 // OFFLINE
 function rOffSetup(){render(`<div class="ph" style="margin-top:6px"><div class="ey">Offline</div><h1>Setup Pemain</h1></div><div class="card"><div class="lbl">Jumlah Pemain</div><div class="count-sel"><button class="count-btn" onclick="oChg(-1)">−</button><div id="ocd" class="count-num">${S.oCount}</div><button class="count-btn" onclick="oChg(1)">+</button></div><div style="height:1px;background:var(--border);margin:14px 0"></div><div class="lbl">Nama Pemain</div><div id="onl"></div><button class="btn btn-ora" onclick="oStart()" style="margin-top:14px">▶ Mulai Game</button></div><button class="btn btn-ghost" onclick="rHome()">← Kembali</button>`);renderONames();}
@@ -211,10 +171,10 @@ function rOPlay(){const alive=oAlive();const player=alive[S.oTurn%alive.length];
 <input id="owi" class="word-inp" placeholder="KETIK KATA..." maxlength="30" autocomplete="off" autocorrect="off" autocapitalize="on" spellcheck="false" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')oSubmit(this.value)">
 <button class="btn btn-ora" onclick="oSubmit($('owi').value)" style="margin-top:8px">✓ Kirim Kata</button>
 <button class="btn btn-ghost" onclick="oFail()" style="margin-top:6px">💀 Waktu Habis / Menyerah</button>
-<div class="card" style="padding:14px;margin-top:8px"><div class="lbl">Nyawa</div><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">${S.oPlayers.map(p=>`<div style="background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;padding:8px 12px;text-align:center"><div style="font-size:12px;font-weight:600;${!p.alive?'opacity:.4;text-decoration:line-through':''}">${esc(p.name)}</div><div>${Array.from({length:MAX_LIVES}).map((_,i)=>`<span>${i<p.lives?'❤️':'💀'}</span>`).join('')}</div></div>`).join('')}</div></div>`);setTimeout(()=>$('owi')?.focus(),100);}
+<div class="card" style="padding:14px;margin-top:8px"><div class="lbl">Nyawa</div><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">${S.oPlayers.map(p=>`<div style="background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;padding:8px 12px;text-align:center"><div style="font-size:12px;font-weight:600;${!p.alive?'opacity:.4;text-decoration:line-through">${esc(p.name)}</div><div>${Array.from({length:MAX_LIVES}).map((_,i)=>`<span>${i<p.lives?'❤️':'💀'}</span>`).join('')}</div></div>`).join('')}</div></div>`);setTimeout(()=>$('owi')?.focus(),100);}
 function oSubmit(word){const syl=S.oSyl.toLowerCase();const w=word.trim().toLowerCase();if(w.length<2){toast('Minimal 2 huruf!');return;}if(!w.includes(syl)){toast(`Harus mengandung "${syl.toUpperCase()}"!`);return;}if(S.oHistory.includes(w)){toast('Kata sudah dipakai!');return;}S.oHistory.push(w);S.oSyl=randSyl();const alive=oAlive();S.oTurn=(S.oTurn+1)%alive.length;renderOff();}
 function oFail(){const alive=oAlive();const player=alive[S.oTurn%alive.length];player.lives--;toast(`${player.name} kehilangan 1 nyawa! 💀`);if(player.lives<=0){player.alive=false;if(oAlive().length<=1){S.oPhase='ended';renderOff();return;}S.oSyl=randSyl();}const newAlive=oAlive();S.oTurn=S.oTurn%newAlive.length;S.oSyl=randSyl();renderOff();}
-function rOEnded(){const winner=oAlive()[0];const medals=['🥇','🥈','🥉'];const sorted=[...S.oPlayers].sort((a,b)=>b.lives-a.lives);render(`<div style="padding-top:16px;animation:fadeUp .4s ease both;text-align:center"><div style="font-size:60px;margin-bottom:10px">💥</div><div style="font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:var(--acc2)">${winner?esc(winner.name)+' Menang!':'Game Selesai!'}</div><div class="card" style="text-align:left;margin-top:20px"><div class="lbl">Hasil</div>${sorted.map((p,i)=>`<div class="pi" style="${p.alive?'border-color:rgba(249,115,22,.4)':''}"><div style="display:flex;align-items:center;gap:8px"><span>${p.alive?medals[i]||'':'💀'}</span><span style="font-weight:500">${esc(p.name)}</span></div><div>${Array.from({length:MAX_LIVES}).map((_,j)=>`<span>${j<p.lives?'❤️':'💀'}</span>`).join('')}</div></div>`).join('')}</div><button class="btn btn-ora" onclick="oStart()">↺ Main Lagi</button><button class="btn btn-ghost" onclick="S.mode='online';rHome()" style="margin-top:6px">← Menu Utama</button></div>`);}
+function rOEnded(){const winner=oAlive()[0];const medals=['🥇','🥈','🥉'];const sorted=[...S.oPlayers].sort((a,b)=>b.lives-a.lives);render(`<div style="padding-top:16px;animation:fadeUp .4s ease both;text-align:center"><div style="font-size:60px;margin-bottom:10px">💥</div><div style="font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:var(--acc2)">${winner?esc(winner.name)+' Menang!':'Game Selesai!'}</div><div class="card" style="text-align:left;margin-top:20px"><div class="lbl">Hasil</div>${sorted.map((p,i)=>`<div class="pi" style="${p.alive?'border-color:rgba(249,115,22,.4)"><div style="display:flex;align-items:center;gap:8px"><span>${p.alive?medals[i]||'':'💀'}</span><span style="font-weight:500">${esc(p.name)}</span></div><div>${Array.from({length:MAX_LIVES}).map((_,j)=>`<span>${j<p.lives?'❤️':'💀'}</span>`).join('')}</div></div>`).join('')}</div><button class="btn btn-ora" onclick="oStart()">↺ Main Lagi</button><button class="btn btn-ghost" onclick="S.mode='online';rHome()" style="margin-top:6px">← Menu Utama</button></div>`);}
 
 window.onload=async()=>{try{cleanupOldRooms();}catch(e){}try{const r=await tryResumeSession();if(!r)rHome();}catch(e){rHome();}};
 </script>

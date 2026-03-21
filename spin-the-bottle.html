@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>Spin The Bottle</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#0a0610;--glass:#ffffff08;--glass2:#ffffff12;--border:#ffffff14;--border2:#ffffff22;--acc:#e879f9;--acc2:#f0abfc;--red:#f87171;--green:#4ade80;--yellow:#fbbf24;--text:#fdf4ff;--text2:#e879f9;--text3:#701a75}
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+    html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;overflow-x:hidden}
+    body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse at top,rgba(232,121,249,.1) 0%,transparent 55%),radial-gradient(ellipse at bottom,rgba(240,171,252,.05) 0%,transparent 55%)}
+    #app{position:relative;z-index:1;width:100%;max-width:480px;margin:0 auto;padding:20px 16px 80px;min-height:100vh}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @keyframes pulseDot{0%,100%{transform:scale(.6);opacity:.3}50%{transform:scale(1);opacity:1}}
+    @keyframes bottleSpin{from{transform:rotate(var(--from))}to{transform:rotate(var(--to))}}
+    @keyframes resultPop{0%{transform:scale(0) rotate(-10deg);opacity:0}70%{transform:scale(1.1) rotate(3deg)}100%{transform:scale(1) rotate(0);opacity:1}}
+    .fade{animation:fadeUp .3s ease both}
+    .card{background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1.5px solid var(--border);border-radius:20px;padding:20px;margin-bottom:14px;position:relative;overflow:hidden}
+    .card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent)}
+    .ph{text-align:center;margin-bottom:20px}
+    .ph .ey{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;letter-spacing:2.5px;color:var(--acc2);text-transform:uppercase;background:rgba(232,121,249,.12);border:1px solid rgba(232,121,249,.25);border-radius:100px;padding:4px 12px;margin-bottom:10px}
+    .ph h1{font-family:'Syne',sans-serif;font-size:clamp(22px,6vw,30px);font-weight:800;letter-spacing:-.5px}
+    .lbl{font-size:10px;font-weight:700;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px}
+    .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:15px 20px;margin-top:10px;border:none;border-radius:14px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;transition:all .2s}
+    .btn:disabled{opacity:.35;cursor:not-allowed}.btn:active:not(:disabled){transform:scale(.97)}
+    .btn-pink{background:linear-gradient(135deg,var(--acc),#a21caf);color:#fff;box-shadow:0 4px 20px rgba(232,121,249,.35)}
+    .btn-ghost{background:var(--glass);color:var(--text2);border:1.5px solid var(--border2)}
+    .inp{width:100%;padding:12px 16px;background:rgba(255,255,255,.07);border:1.5px solid var(--border2);border-radius:12px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;outline:none;transition:border-color .2s}
+    .inp:focus{border-color:var(--acc)}.inp::placeholder{color:var(--text3)}
+    .badge{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;font-size:10px;font-weight:700;letter-spacing:1.5px;border-radius:100px;text-transform:uppercase}
+    .b-pink{background:rgba(232,121,249,.15);color:var(--acc2);border:1px solid rgba(232,121,249,.3)}
+    .b-dim{background:rgba(255,255,255,.06);color:#475569;border:1px solid var(--border)}
+    .pi{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;margin-top:8px;border-radius:12px;background:rgba(255,255,255,.04);border:1.5px solid var(--border);font-size:13px}
+
+    /* SPINNER */
+    .spinner-wrap{position:relative;width:260px;height:260px;margin:0 auto}
+    .spinner-bg{width:260px;height:260px;border-radius:50%;border:3px solid rgba(232,121,249,.3);background:rgba(232,121,249,.05);display:flex;align-items:center;justify-content:center;position:relative}
+    .bottle{font-size:80px;position:absolute;top:50%;left:50%;transform-origin:center center;transition:transform 0s;line-height:1}
+    .bottle.spinning{animation:bottleSpin var(--dur) cubic-bezier(.17,.67,.12,1) forwards}
+    .spinner-pointer{position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:28px}
+    /* Players around circle */
+    .player-dot{position:absolute;transform-origin:0 0;text-align:center}
+    .player-dot .pname{font-size:10px;font-weight:700;color:var(--text2);white-space:nowrap;background:rgba(0,0,0,.5);padding:2px 6px;border-radius:100px}
+
+    /* RESULT */
+    .result-card{border-radius:20px;padding:28px;text-align:center;margin:14px 0;background:linear-gradient(135deg,rgba(232,121,249,.2),rgba(240,171,252,.1));border:2px solid rgba(232,121,249,.5);animation:resultPop .5s ease both}
+    .result-name{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--acc2);margin:8px 0}
+    .challenge-box{background:rgba(255,255,255,.06);border:1px solid var(--border2);border-radius:14px;padding:16px;margin-top:14px;font-size:15px;font-weight:500;line-height:1.6}
+
+    .count-sel{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+    .count-btn{width:44px;height:44px;border-radius:12px;border:1.5px solid var(--border2);background:var(--glass);color:var(--text);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .count-btn:active{transform:scale(.93)}
+    .count-num{flex:1;text-align:center;font-family:'Syne',sans-serif;font-size:36px;font-weight:800;background:linear-gradient(135deg,var(--text),var(--acc2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+
+    #toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(100px);background:rgba(10,6,16,.95);backdrop-filter:blur(20px);border:1.5px solid rgba(232,121,249,.4);border-radius:14px;padding:12px 22px;font-size:13px;font-weight:500;color:var(--text);z-index:999;transition:transform .35s cubic-bezier(.4,0,.2,1);max-width:320px;text-align:center}
+    #toast.show{transform:translateX(-50%) translateY(0)}
+  </style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast"></div>
+<script>
+const CHALLENGES = [
+  "Ceritakan hal paling memalukan yang pernah kamu alami",
+  "Tiru gaya jalan orang yang ada di sebelahmu",
+  "Telepon seseorang dan bilang 'aku kangen kamu' lalu tutup",
+  "Minum 1 gelas air dengan tangan kiri sampai habis",
+  "Buat status WA yang lucu sekarang juga",
+  "Nyanyikan 1 bait lagu favorit dengan suara operai",
+  "Foto selfie dengan ekspresi paling aneh dan posting",
+  "Ceritakan crush pertamamu secara detail",
+  "Lakukan push-up 10 kali sekarang",
+  "Berpura-pura jadi presiden selama 1 menit",
+  "Kirim pesan 'halo' ke orang pertama di kontakmu",
+  "Tebak isi tas orang di sebelahmu",
+  "Joget 30 detik tanpa musik",
+  "Ceritakan mimpi paling aneh yang pernah kamu alami",
+  "Pura-pura nangis selama 30 detik",
+  "Bilang 'aku sayang kamu' ke orang di sebelahmu",
+  "Lakukan gerakan robot selama 1 menit",
+  "Ceritakan kebohongan terbesar yang pernah kamu lakukan",
+  "Buat puisi 4 baris tentang orang yang ada di ruangan ini",
+  "Pura-pura jadi artis favorit kamu selama 2 menit",
+  "Screenshot layar HP kamu sekarang dan tunjukkan ke semua",
+  "Ceritakan hal paling konyol yang pernah kamu percaya sewaktu kecil",
+  "Berdiri di atas kursi dan teriak 'AKU YANG TERBAIK'",
+  "Lakukan senam pinguin selama 30 detik",
+  "Ceritakan momen paling canggung dalam hidupmu",
+];
+
+const TRUTHS = [
+  "Siapa yang pertama kali kamu sukai di ruangan ini?",
+  "Apa hal paling bodoh yang pernah kamu lakukan karena suka seseorang?",
+  "Kapan terakhir kamu bohong dan kepada siapa?",
+  "Apa rahasia terbesar yang belum pernah kamu ceritakan?",
+  "Siapa yang menurutmu paling menarik di antara yang ada di sini?",
+  "Apa hal yang paling kamu sesali dalam hidupmu?",
+  "Pernah stalking mantan di sosmed? Kapan terakhir?",
+  "Apa hal paling memalukan yang ada di galeri HP-mu?",
+  "Siapa yang pertama kamu hubungi kalau ada masalah?",
+  "Apa hal yang kamu sembunyikan dari orang tuamu?",
+];
+
+const S = {
+  players: [],
+  count: 4,
+  names: Array.from({length:20},(_,i)=>`Pemain ${i+1}`),
+  phase: 'setup',
+  spinning: false,
+  target: null,
+  mode: 'dare', // dare or truth
+};
+
+function toast(msg,d=2500){const e=document.getElementById('toast');e.textContent=msg;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),d);}
+function render(h){document.getElementById('app').innerHTML=`<div class="fade">${h}</div>`;}
+function $(id){return document.getElementById(id);}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function shuffle(a){return[...a].sort(()=>Math.random()-.5);}
+function rand(arr){return arr[Math.floor(Math.random()*arr.length)];}
+
+function rHome(){
+  render(`
+    <div class="ph" style="margin-top:8px"><div class="ey">🍾 Party Game</div><h1>Spin The Bottle</h1></div>
+    <div class="card">
+      <div class="lbl">Jumlah Pemain</div>
+      <div class="count-sel">
+        <button class="count-btn" onclick="oChg(-1)">−</button>
+        <div id="ocd" class="count-num">${S.count}</div>
+        <button class="count-btn" onclick="oChg(1)">+</button>
+      </div>
+      <div style="height:1px;background:rgba(255,255,255,.1);margin:14px 0"></div>
+      <div class="lbl">Nama Pemain</div>
+      <div id="onl"></div>
+      <button class="btn btn-pink" onclick="oStart()" style="margin-top:14px">▶ Mulai Spin!</button>
+    </div>
+    <div class="card" style="padding:14px">
+      <div class="lbl">Cara Main</div>
+      <p style="font-size:13px;color:var(--text2);line-height:1.7">Tap tombol spin → botol berputar → berhenti di salah satu pemain → pemain itu dapat tantangan atau pertanyaan jujur!</p>
+    </div>
+    <button class="btn btn-ghost" onclick="location.href='index.html'" style="margin-top:4px">← Kembali ke Hub</button>
+  `);
+  renderNames();
+}
+function oChg(d){S.count=Math.max(2,Math.min(12,S.count+d));$('ocd').textContent=S.count;renderNames();}
+function renderNames(){
+  const c=$('onl');if(!c)return;
+  c.innerHTML=Array.from({length:S.count},(_,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <span style="width:22px;text-align:right;font-size:13px;color:var(--text3);font-weight:600">${i+1}</span>
+      <input class="inp" value="${esc(S.names[i]||`Pemain ${i+1}`)}" oninput="S.names[${i}]=this.value.trim()" placeholder="Pemain ${i+1}" maxlength="16" style="padding:10px 14px">
+    </div>`).join('');
+}
+function oStart(){
+  S.players=S.names.slice(0,S.count).map((n,i)=>n||`Pemain ${i+1}`);
+  S.phase='spin';S.target=null;
+  rSpin();
+}
+
+function rSpin(){
+  const n=S.players.length;
+  const sliceDeg=360/n;
+  render(`
+    <div class="ph" style="margin-top:6px"><div class="ey">🍾 Spin!</div><h1>${S.target?S.players[S.target]+'!':'Siapa Berikutnya?'}</h1></div>
+    <div style="position:relative;margin:20px auto;width:280px;height:280px">
+      <!-- Player names around circle -->
+      ${S.players.map((p,i)=>{
+        const angle=(sliceDeg*i - 90) * Math.PI/180;
+        const r=120;
+        const x=140+r*Math.cos(angle);
+        const y=140+r*Math.sin(angle);
+        return`<div style="position:absolute;left:${x}px;top:${y}px;transform:translate(-50%,-50%);text-align:center;z-index:2">
+          <div style="width:32px;height:32px;border-radius:50%;background:rgba(232,121,249,.2);border:2px solid rgba(232,121,249,.5);display:flex;align-items:center;justify-content:center;margin:0 auto 2px;font-size:14px">👤</div>
+          <div style="font-size:9px;font-weight:700;color:${S.target===i?'var(--acc2)':'var(--text2)'};white-space:nowrap;background:rgba(0,0,0,.6);padding:1px 5px;border-radius:100px;max-width:60px;overflow:hidden;text-overflow:ellipsis">${esc(p)}</div>
+        </div>`;}).join('')}
+      <!-- Center circle & bottle -->
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:80px;height:80px;border-radius:50%;background:rgba(232,121,249,.15);border:2px solid rgba(232,121,249,.4);display:flex;align-items:center;justify-content:center;z-index:3">
+        <div id="bottle" style="font-size:40px;transform:rotate(0deg);transition:transform 3s cubic-bezier(.17,.67,.12,1)">🍾</div>
+      </div>
+    </div>
+    ${S.target!==null?`
+      <div class="result-card">
+        <div style="font-size:12px;color:var(--text2);letter-spacing:2px">KENA!</div>
+        <div class="result-name">${esc(S.players[S.target])}</div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn" onclick="showChallenge('dare')" style="flex:1;margin-top:0;background:rgba(248,113,113,.2);border:2px solid rgba(248,113,113,.4);color:#f87171;border-radius:12px">🔥 Dare</button>
+          <button class="btn" onclick="showChallenge('truth')" style="flex:1;margin-top:0;background:rgba(74,222,128,.15);border:2px solid rgba(74,222,128,.35);color:#4ade80;border-radius:12px">💬 Truth</button>
+        </div>
+      </div>
+    `:''}
+    <button class="btn btn-pink" id="spin-btn" onclick="doSpin()" ${S.spinning?'disabled':''} style="margin-top:8px">
+      ${S.spinning?'🌀 Berputar...':'🍾 Spin!'}
+    </button>
+    <button class="btn btn-ghost" onclick="rHome()" style="margin-top:6px">← Ganti Pemain</button>
+  `);
+}
+
+function doSpin(){
+  if(S.spinning)return;
+  S.spinning=true;S.target=null;
+  const targetIdx=Math.floor(Math.random()*S.players.length);
+  const n=S.players.length;
+  const sliceDeg=360/n;
+  // Target angle: point at player position
+  const targetAngle=sliceDeg*targetIdx;
+  const extraSpins=5*360;
+  const totalRot=extraSpins+targetAngle;
+  const bottle=$('bottle');
+  if(bottle){
+    bottle.style.transition='transform 3s cubic-bezier(.17,.67,.12,1)';
+    bottle.style.transform=`rotate(${totalRot}deg)`;
+  }
+  setTimeout(()=>{
+    S.spinning=false;S.target=targetIdx;
+    rSpin();
+  },3100);
+}
+
+function showChallenge(type){
+  const player=S.players[S.target];
+  const challenge=type==='dare'?rand(CHALLENGES):rand(TRUTHS);
+  render(`
+    <div class="ph" style="margin-top:8px"><div class="ey">${type==='dare'?'🔥 Dare':'💬 Truth'}</div><h1>${esc(player)}</h1></div>
+    <div class="result-card" style="animation:resultPop .4s ease both">
+      <div style="font-size:44px;margin-bottom:10px">${type==='dare'?'🔥':'💬'}</div>
+      <div class="challenge-box">${esc(challenge)}</div>
+    </div>
+    <button class="btn btn-pink" onclick="S.target=null;rSpin()" style="margin-top:8px">↺ Spin Lagi</button>
+    <button class="btn btn-ghost" onclick="rHome()" style="margin-top:6px">← Ganti Pemain</button>
+  `);
+}
+
+window.onload=()=>rHome();
+</script>
+</body>
+</html>

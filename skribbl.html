@@ -9,15 +9,15 @@
   <style>
     :root{--bg:#08080f;--glass:#ffffff08;--glass2:#ffffff12;--border:#ffffff14;--border2:#ffffff22;--acc:#ec4899;--acc2:#f472b6;--green:#4ade80;--red:#f87171;--blue:#60a5fa;--yellow:#fbbf24;--text:#fdf4ff;--text2:#f0abfc;--text3:#86198f}
     *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-    html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;overflow-x:hidden}
+    html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;overflow-x:hidden;-webkit-font-smoothing:antialiased;text-rendering:optimizeSpeed}
     body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse at top,rgba(236,72,153,.08) 0%,transparent 50%),radial-gradient(ellipse at bottom,rgba(244,114,182,.05) 0%,transparent 50%)}
     #app{position:relative;z-index:1;width:100%;max-width:500px;margin:0 auto;padding:16px 12px 80px;min-height:100vh}
     @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
     @keyframes spin{to{transform:rotate(360deg)}}
-    @keyframes pulseDot{0%,100%{transform:scale(.6);opacity:.3}50%{transform:scale(1);opacity:1}}
+    @keyframes pulseDot{0%,100%{opacity:.3}50%{opacity:1}}
     @keyframes correct{0%{transform:scale(1)}50%{transform:scale(1.2)}100%{transform:scale(1)}}
     .fade{animation:fadeUp .3s ease both}
-    .card{background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1.5px solid var(--border);border-radius:18px;padding:18px;margin-bottom:12px;position:relative;overflow:hidden}
+    .card{background:rgba(255,255,255,.07);border:1.5px solid var(--border);border-radius:18px;padding:18px;margin-bottom:12px;position:relative;overflow:hidden}
     .card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent)}
     .ph{text-align:center;margin-bottom:18px}
     .ph .ey{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;letter-spacing:2.5px;color:var(--acc2);text-transform:uppercase;background:rgba(236,72,153,.12);border:1px solid rgba(236,72,153,.3);border-radius:100px;padding:4px 12px;margin-bottom:10px}
@@ -27,7 +27,7 @@
     .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px 20px;margin-top:10px;border:none;border-radius:13px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;letter-spacing:.2px;transition:all .2s}
     .btn:disabled{opacity:.35;cursor:not-allowed}.btn:active:not(:disabled){transform:scale(.97)}
     .btn-pink{background:linear-gradient(135deg,var(--acc),#db2777);color:#fff;box-shadow:0 4px 20px rgba(236,72,153,.35)}
-    .btn-ghost{background:var(--glass);color:var(--text2);border:1.5px solid var(--border2)}
+    .btn-ghost{background:rgba(255,255,255,.07);color:var(--text2);border:1.5px solid var(--border2)}
     .inp{width:100%;padding:12px 16px;background:rgba(255,255,255,.07);border:1.5px solid var(--border2);border-radius:12px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;outline:none;transition:border-color .2s}
     .inp:focus{border-color:var(--acc)}.inp::placeholder{color:var(--text3)}
     .inp-code{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;text-align:center;letter-spacing:10px;text-transform:uppercase;padding:16px}
@@ -36,7 +36,7 @@
     .b-grn{background:rgba(74,222,128,.15);color:var(--green);border:1px solid rgba(74,222,128,.3)}
     .b-dim{background:rgba(255,255,255,.06);color:#475569;border:1px solid var(--border)}
     .pi{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;margin-top:8px;border-radius:12px;background:rgba(255,255,255,.04);border:1.5px solid var(--border);font-size:13px}
-    .sbar{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:var(--glass);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;font-size:11px;color:var(--text2)}
+    .sbar{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:rgba(255,255,255,.07);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;font-size:11px;color:var(--text2)}
     .sbar .rnd{color:var(--acc2);font-weight:700;font-family:'Syne',sans-serif}
     .rcode{font-family:'Syne',sans-serif;font-size:44px;font-weight:800;background:linear-gradient(135deg,var(--acc),var(--acc2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center;letter-spacing:10px;padding:12px 0}
     /* CANVAS */
@@ -47,10 +47,10 @@
     .color-dot{width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .15s;flex-shrink:0}
     .color-dot.active{border-color:#fff;transform:scale(1.2)}
     .color-dot:active{transform:scale(.9)}
-    .size-btn{width:36px;height:36px;border-radius:10px;border:1.5px solid var(--border2);background:var(--glass);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+    .size-btn{width:36px;height:36px;border-radius:10px;border:1.5px solid var(--border2);background:rgba(255,255,255,.07);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
     .size-btn.active{border-color:var(--acc);background:rgba(236,72,153,.15)}
     .size-btn:active{transform:scale(.93)}
-    .erase-btn{padding:6px 12px;border-radius:10px;border:1.5px solid var(--border2);background:var(--glass);cursor:pointer;font-size:12px;font-weight:600;color:var(--text2);transition:all .15s}
+    .erase-btn{padding:6px 12px;border-radius:10px;border:1.5px solid var(--border2);background:rgba(255,255,255,.07);cursor:pointer;font-size:12px;font-weight:600;color:var(--text2);transition:all .15s}
     .erase-btn.active{border-color:var(--red);color:var(--red);background:rgba(248,113,113,.1)}
     /* WORD HINT */
     .word-hint{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;letter-spacing:8px;text-align:center;color:var(--text);margin:8px 0}
@@ -74,7 +74,7 @@
     .loader{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;gap:16px}
     .loader-ring{width:44px;height:44px;border-radius:50%;border:3px solid rgba(236,72,153,.2);border-top-color:var(--acc);animation:spin .8s linear infinite}
     .loader p{font-size:12px;color:var(--text3);letter-spacing:2px;font-weight:600;text-transform:uppercase}
-    #toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(100px);background:rgba(8,8,15,.95);backdrop-filter:blur(20px);border:1.5px solid rgba(236,72,153,.4);border-radius:14px;padding:12px 22px;font-size:13px;font-weight:500;color:var(--text);z-index:999;transition:transform .35s cubic-bezier(.4,0,.2,1);max-width:320px;text-align:center}
+    #toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(100px);background:rgba(8,8,15,.95);border:1.5px solid rgba(236,72,153,.4);border-radius:14px;padding:12px 22px;font-size:13px;font-weight:500;color:var(--text);z-index:999;transition:transform .35s cubic-bezier(.4,0,.2,1);max-width:320px;text-align:center}
     #toast.show{transform:translateX(-50%) translateY(0)}
   </style>
 </head>
@@ -112,7 +112,8 @@ async function tryResumeSession(){if(!FB||!db)return false;let code;try{code=loc
 function initCanvas(){const wrap=$('canvas-wrap');if(!wrap)return;canvas=$('game-canvas');if(!canvas)return;const W=wrap.clientWidth;canvas.width=W;canvas.height=Math.round(W*0.65);ctx=canvas.getContext('2d');ctx.lineCap='round';ctx.lineJoin='round';// Draw existing strokes
 const r=S.room;if(r?.strokes)replayStrokes(r.strokes);}
 
-function replayStrokes(strokes){if(!ctx||!canvas)return;ctx.clearRect(0,0,canvas.width,canvas.height);(strokes||[]).forEach(s=>{ctx.beginPath();ctx.strokeStyle=s.c;ctx.lineWidth=s.sz;if(s.t==='move'){ctx.moveTo(s.x*canvas.width,s.y*canvas.height);}ctx.lineTo(s.x*canvas.width,s.y*canvas.height);ctx.stroke();});}
+function replayStrokes(strokes){if(!ctx||!canvas)return;ctx.clearRect(0,0,canvas.width,canvas.height);const arr=strokes||[];for(let i=0;i<arr.length;i++){const s=arr[i];ctx.beginPath();ctx.strokeStyle=s.c;ctx.lineWidth=s.sz;if(s.t==='move'){ctx.moveTo(s.x*canvas.width,s.y*canvas.height);}ctx.lineTo(s.x*canvas.width,s.y*canvas.height);ctx.stroke();}}
+function appendStrokes(strokes,fromIdx){if(!ctx||!canvas)return;const arr=strokes||[];for(let i=fromIdx;i<arr.length;i++){const s=arr[i];ctx.beginPath();ctx.strokeStyle=s.c;ctx.lineWidth=s.sz;if(s.t==='move'){ctx.moveTo(s.x*canvas.width,s.y*canvas.height);}ctx.lineTo(s.x*canvas.width,s.y*canvas.height);ctx.stroke();}}
 
 function getPos(e){const rect=canvas.getBoundingClientRect();const scaleX=canvas.width/rect.width;const scaleY=canvas.height/rect.height;if(e.touches){const t=e.touches[0];return{x:(t.clientX-rect.left)*scaleX,y:(t.clientY-rect.top)*scaleY};}return{x:(e.clientX-rect.left)*scaleX,y:(e.clientY-rect.top)*scaleY};}
 
@@ -121,7 +122,8 @@ function onMove(e){e.preventDefault();if(!S.isDrawing||!ctx)return;const r=S.roo
 function onUp(){S.isDrawing=false;}
 
 let strokeBatch=[];let strokeTimer=null;
-function addStroke(s){strokeBatch.push(s);if(strokeTimer)return;strokeTimer=setTimeout(async()=>{const r=S.room;if(!r)return;const existing=r.strokes||[];const newStrokes=[...existing,...strokeBatch];strokeBatch=[];strokeTimer=null;await db.ref(`${ROOM_PREFIX}/${S.roomCode}/strokes`).set(newStrokes.slice(-500));},80);}
+function addStroke(s){strokeBatch.push(s);if(strokeTimer)return;strokeTimer=setTimeout(async()=>{const r=S.room;if(!r||!S.roomCode)return;const existing=r.strokes||[];const newStrokes=[...existing,...strokeBatch];strokeBatch=[];strokeTimer=null;// Batched write, max 300 strokes untuk performa
+await db.ref(`${ROOM_PREFIX}/${S.roomCode}/strokes`).set(newStrokes.slice(-300));},120);}
 
 function clearCanvas(){if(!ctx||!canvas)return;ctx.clearRect(0,0,canvas.width,canvas.height);}
 async function fbClearCanvas(){if(!S.room||S.room.drawer!==S.myId)return;await db.ref(`${ROOM_PREFIX}/${S.roomCode}/strokes`).set([]);}
@@ -129,8 +131,10 @@ async function fbClearCanvas(){if(!S.room||S.room.drawer!==S.myId)return;await d
 // ── FIREBASE OPS ─────────────────────────────────────────────────
 async function fbCreate(name){let code,exists=true;while(exists){code=genCode();const s=await db.ref(`${ROOM_PREFIX}/${code}`).once('value');exists=s.exists()&&s.val().status!=='ended';}const now=Date.now();await db.ref(`${ROOM_PREFIX}/${code}`).set({code,hostId:S.myId,status:'lobby',round:0,maxRounds:3,word:null,drawer:null,strokes:[],chat:[],roundStart:null,guessedIds:[],createdAt:now,players:{[S.myId]:{name,joinedAt:now,score:0}}});return code;}
 async function fbJoin(code,name){const s=await db.ref(`${ROOM_PREFIX}/${code}`).once('value');if(!s.exists())throw new Error('Room tidak ditemukan');const r=s.val();if(r.status==='ended')throw new Error('Game sudah berakhir');if(Object.keys(r.players||{}).length>=8)throw new Error('Room penuh (maks 8)');if(r.players&&r.players[S.myId]){await db.ref(`${ROOM_PREFIX}/${code}/players/${S.myId}/name`).set(name);return r;}await db.ref(`${ROOM_PREFIX}/${code}/players/${S.myId}`).set({name,joinedAt:Date.now(),score:0});return r;}
-function fbListen(code){if(S.unsubFn)S.unsubFn();saveSession(code,S.isHost);const ref=db.ref(`${ROOM_PREFIX}/${code}`);const h=ref.on('value',snap=>{if(!snap.exists())return;const prev=S.room;S.room=snap.val();// Replay strokes if changed
-if(canvas&&ctx){const newLen=(S.room.strokes||[]).length;if(newLen!==S.lastStrokeCount){S.lastStrokeCount=newLen;replayStrokes(S.room.strokes);}};renderPhase();});S.unsubFn=()=>ref.off('value',h);}
+function fbListen(code){if(S.unsubFn)S.unsubFn();saveSession(code,S.isHost);const ref=db.ref(`${ROOM_PREFIX}/${code}`);const h=ref.on('value',snap=>{if(!snap.exists())return;const prev=S.room;S.room=snap.val();// Only draw NEW strokes, not replay all
+if(canvas&&ctx){const newLen=(S.room.strokes||[]).length;if(newLen!==S.lastStrokeCount){if(newLen<S.lastStrokeCount){replayStrokes(S.room.strokes);}else{appendStrokes(S.room.strokes,S.lastStrokeCount);}S.lastStrokeCount=newLen;}}
+// Only re-render UI if status/turn changed
+if(!prev||prev.status!==S.room.status||prev.drawer!==S.room.drawer||prev.round!==S.room.round||(S.room.chat||[]).length!==(prev?.chat||[]).length)renderPhase();});S.unsubFn=()=>ref.off('value',h);}
 
 async function fbStart(){const r=S.room,pids=Object.keys(r.players);if(pids.length<2){toast('Minimal 2 pemain!');return;}const drawer=pids[0];const word=randWord();const u={};pids.forEach(id=>{u[`players/${id}/score`]=0;});u.status='drawing';u.round=1;u.drawer=drawer;u.word=word;u.strokes=[];u.chat=[];u.roundStart=Date.now();u.guessedIds=[];await db.ref(`${ROOM_PREFIX}/${S.roomCode}`).update(u);}
 

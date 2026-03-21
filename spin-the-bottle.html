@@ -8,16 +8,16 @@
   <style>
     :root{--bg:#0a0610;--glass:#ffffff08;--glass2:#ffffff12;--border:#ffffff14;--border2:#ffffff22;--acc:#e879f9;--acc2:#f0abfc;--red:#f87171;--green:#4ade80;--yellow:#fbbf24;--text:#fdf4ff;--text2:#e879f9;--text3:#701a75}
     *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-    html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;overflow-x:hidden}
+    html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;overflow-x:hidden;-webkit-font-smoothing:antialiased;text-rendering:optimizeSpeed}
     body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse at top,rgba(232,121,249,.1) 0%,transparent 55%),radial-gradient(ellipse at bottom,rgba(240,171,252,.05) 0%,transparent 55%)}
     #app{position:relative;z-index:1;width:100%;max-width:480px;margin:0 auto;padding:20px 16px 80px;min-height:100vh}
     @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
     @keyframes spin{to{transform:rotate(360deg)}}
-    @keyframes pulseDot{0%,100%{transform:scale(.6);opacity:.3}50%{transform:scale(1);opacity:1}}
+    @keyframes pulseDot{0%,100%{opacity:.3}50%{opacity:1}}
     @keyframes bottleSpin{from{transform:rotate(var(--from))}to{transform:rotate(var(--to))}}
     @keyframes resultPop{0%{transform:scale(0) rotate(-10deg);opacity:0}70%{transform:scale(1.1) rotate(3deg)}100%{transform:scale(1) rotate(0);opacity:1}}
     .fade{animation:fadeUp .3s ease both}
-    .card{background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1.5px solid var(--border);border-radius:20px;padding:20px;margin-bottom:14px;position:relative;overflow:hidden}
+    .card{background:rgba(255,255,255,.07);border:1.5px solid var(--border);border-radius:20px;padding:20px;margin-bottom:14px;position:relative;overflow:hidden}
     .card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent)}
     .ph{text-align:center;margin-bottom:20px}
     .ph .ey{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;letter-spacing:2.5px;color:var(--acc2);text-transform:uppercase;background:rgba(232,121,249,.12);border:1px solid rgba(232,121,249,.25);border-radius:100px;padding:4px 12px;margin-bottom:10px}
@@ -26,7 +26,7 @@
     .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:15px 20px;margin-top:10px;border:none;border-radius:14px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;transition:all .2s}
     .btn:disabled{opacity:.35;cursor:not-allowed}.btn:active:not(:disabled){transform:scale(.97)}
     .btn-pink{background:linear-gradient(135deg,var(--acc),#a21caf);color:#fff;box-shadow:0 4px 20px rgba(232,121,249,.35)}
-    .btn-ghost{background:var(--glass);color:var(--text2);border:1.5px solid var(--border2)}
+    .btn-ghost{background:rgba(255,255,255,.07);color:var(--text2);border:1.5px solid var(--border2)}
     .inp{width:100%;padding:12px 16px;background:rgba(255,255,255,.07);border:1.5px solid var(--border2);border-radius:12px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;outline:none;transition:border-color .2s}
     .inp:focus{border-color:var(--acc)}.inp::placeholder{color:var(--text3)}
     .badge{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;font-size:10px;font-weight:700;letter-spacing:1.5px;border-radius:100px;text-transform:uppercase}
@@ -50,11 +50,11 @@
     .challenge-box{background:rgba(255,255,255,.06);border:1px solid var(--border2);border-radius:14px;padding:16px;margin-top:14px;font-size:15px;font-weight:500;line-height:1.6}
 
     .count-sel{display:flex;align-items:center;gap:12px;margin-bottom:12px}
-    .count-btn{width:44px;height:44px;border-radius:12px;border:1.5px solid var(--border2);background:var(--glass);color:var(--text);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .count-btn{width:44px;height:44px;border-radius:12px;border:1.5px solid var(--border2);background:rgba(255,255,255,.07);color:var(--text);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
     .count-btn:active{transform:scale(.93)}
     .count-num{flex:1;text-align:center;font-family:'Syne',sans-serif;font-size:36px;font-weight:800;background:linear-gradient(135deg,var(--text),var(--acc2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 
-    #toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(100px);background:rgba(10,6,16,.95);backdrop-filter:blur(20px);border:1.5px solid rgba(232,121,249,.4);border-radius:14px;padding:12px 22px;font-size:13px;font-weight:500;color:var(--text);z-index:999;transition:transform .35s cubic-bezier(.4,0,.2,1);max-width:320px;text-align:center}
+    #toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(100px);background:rgba(10,6,16,.95);border:1.5px solid rgba(232,121,249,.4);border-radius:14px;padding:12px 22px;font-size:13px;font-weight:500;color:var(--text);z-index:999;transition:transform .35s cubic-bezier(.4,0,.2,1);max-width:320px;text-align:center}
     #toast.show{transform:translateX(-50%) translateY(0)}
   </style>
 </head>
@@ -114,7 +114,13 @@ const S = {
 };
 
 function toast(msg,d=2500){const e=document.getElementById('toast');e.textContent=msg;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),d);}
-function render(h){document.getElementById('app').innerHTML=`<div class="fade">${h}</div>`;}
+function render(h){
+  if(S._rafId)cancelAnimationFrame(S._rafId);
+  S._rafId=requestAnimationFrame(()=>{
+    const app=document.getElementById('app');
+    if(app)app.innerHTML='<div class="fade">'+h+'</div>';
+  });
+}
 function $(id){return document.getElementById(id);}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function shuffle(a){return[...a].sort(()=>Math.random()-.5);}

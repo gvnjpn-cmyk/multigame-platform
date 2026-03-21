@@ -15,29 +15,29 @@
       --text:#f0f4ff;--text2:#94a3b8;--text3:#475569;
     }
     *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-    html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;overflow-x:hidden}
+    html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;overflow-x:hidden;-webkit-font-smoothing:antialiased;text-rendering:optimizeSpeed}
     body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
       background:radial-gradient(ellipse at top left,rgba(248,113,113,.1) 0%,transparent 55%),
                  radial-gradient(ellipse at bottom right,rgba(251,146,60,.07) 0%,transparent 55%)}
     #app{position:relative;z-index:1;width:100%;max-width:480px;margin:0 auto;padding:20px 16px 80px;min-height:100vh}
     @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
     @keyframes spin{to{transform:rotate(360deg)}}
-    @keyframes pulseDot{0%,100%{transform:scale(.6);opacity:.3}50%{transform:scale(1);opacity:1}}
+    @keyframes pulseDot{0%,100%{opacity:.3}50%{opacity:1}}
     @keyframes iconBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
     .fade{animation:fadeUp .3s ease both}
 
     /* ── GUIDE OVERLAY ── */
     #guide{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.85);
-      backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+      
       display:none;flex-direction:column;align-items:center;overflow-y:auto;padding:24px 16px 48px}
     #guide.open{display:flex}
     .guide-inner{width:100%;max-width:460px}
-    .guide-close{position:fixed;top:20px;right:20px;background:var(--glass2);border:1px solid var(--border2);
+    .guide-close{position:fixed;top:20px;right:20px;background:rgba(255,255,255,.11);border:1px solid var(--border2);
       border-radius:100px;padding:8px 16px;font-size:13px;font-weight:600;color:var(--text);
       cursor:pointer;z-index:201}
 
     /* ── CARDS ── */
-    .card{background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+    .card{background:rgba(255,255,255,.07);
       border:1.5px solid var(--border);border-radius:20px;padding:20px;margin-bottom:14px;
       position:relative;overflow:hidden}
     .card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;
@@ -72,7 +72,7 @@
     .btn-green{background:linear-gradient(135deg,var(--green),#16a34a);color:#0a0a0f}
     .btn-blue{background:linear-gradient(135deg,var(--blue),#2563eb);color:#fff}
     .btn-ora{background:linear-gradient(135deg,var(--orange),#ea580c);color:#fff;box-shadow:0 4px 20px rgba(251,146,60,.3)}
-    .btn-ghost{background:var(--glass);color:var(--text2);border:1.5px solid var(--border2)}
+    .btn-ghost{background:rgba(255,255,255,.07);color:var(--text2);border:1.5px solid var(--border2)}
     .btn-ghost:hover:not(:disabled){background:var(--glass2)}
 
     /* ── INPUT ── */
@@ -105,7 +105,7 @@
 
     /* ── STATUS BAR ── */
     .sbar{display:flex;align-items:center;justify-content:space-between;
-      padding:9px 15px;background:var(--glass);border:1px solid var(--border);
+      padding:9px 15px;background:rgba(255,255,255,.07);border:1px solid var(--border);
       border-radius:13px;margin-bottom:14px;font-size:11px;font-weight:500;color:var(--text2)}
     .sbar .phase{color:var(--orange);font-weight:700;font-family:'Syne',sans-serif}
     .sbar .cod{font-family:'Syne',sans-serif;font-weight:800;font-size:13px;
@@ -147,7 +147,7 @@
     .loader p{font-size:12px;color:var(--text3);letter-spacing:2px;font-weight:600;text-transform:uppercase}
 
     #toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(100px);
-      background:rgba(15,10,20,.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+      background:rgba(15,10,20,.95);
       border:1.5px solid rgba(248,113,113,.4);border-radius:14px;
       padding:12px 22px;font-size:13px;font-weight:500;color:var(--text);z-index:999;
       transition:transform .35s cubic-bezier(.4,0,.2,1);max-width:320px;text-align:center}
@@ -155,7 +155,7 @@
 
     .count-sel{display:flex;align-items:center;gap:12px;margin-bottom:12px}
     .count-btn{width:44px;height:44px;border-radius:12px;border:1.5px solid var(--border2);
-      background:var(--glass);color:var(--text);font-size:20px;cursor:pointer;
+      background:rgba(255,255,255,.07);color:var(--text);font-size:20px;cursor:pointer;
       display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
     .count-btn:active{transform:scale(.93)}
     .count-num{flex:1;text-align:center;font-family:'Syne',sans-serif;font-size:36px;font-weight:800;
@@ -355,7 +355,13 @@ function genCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ';let r='';for(let i=0;i<4;i
 function shuffle(a){return[...a].sort(()=>Math.random()-.5);}
 function aliveList(ps){return Object.entries(ps).filter(([,p])=>p.isAlive&&p.role!=='moderator').sort((a,b)=>(a[1].joinedAt||0)-(b[1].joinedAt||0));}
 function toast(msg,d=2500){const e=document.getElementById('toast');e.textContent=msg;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),d);}
-function render(h){document.getElementById('app').innerHTML=`<div class="fade">${h}</div>`;}
+function render(h){
+  if(S._rafId)cancelAnimationFrame(S._rafId);
+  S._rafId=requestAnimationFrame(()=>{
+    const app=document.getElementById('app');
+    if(app)app.innerHTML='<div class="fade">'+h+'</div>';
+  });
+}
 function $(id){return document.getElementById(id);}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function openGuide(){document.getElementById('guide').classList.add('open');}
@@ -390,7 +396,14 @@ function fbListen(code){
   if(S.unsubFn)S.unsubFn();
   saveSession(code, S.isHost);
   const ref=db.ref(`maf_rooms/${code}`);
-  const h=ref.on('value',snap=>{if(!snap.exists())return;S.room=snap.val();renderPhase();});
+  const h=ref.on('value',snap=>{
+      if(!snap.exists())return;
+      const prev=S.room;
+      S.room=snap.val();
+      // Skip re-render jika status & data penting tidak berubah
+      if(prev&&prev.status===S.room.status&&JSON.stringify(prev)===JSON.stringify(S.room))return;
+      renderPhase();
+    });
   S.unsubFn=()=>ref.off('value',h);
 }
 async function fbStart(){
@@ -470,7 +483,7 @@ async function fbStartDay(){
   const r=S.room;const kills=r.nightKills||[];const u={};
   kills.forEach(k=>{if(k.victim)u[`players/${k.victim}/isAlive`]=false;});
   // Check win
-  const fp=JSON.parse(JSON.stringify(r.players));
+  const fp=Object.fromEntries(Object.entries(r.players).map(([k,v])=>[k,{...v}]));
   kills.forEach(k=>{if(k.victim&&fp[k.victim])fp[k.victim].isAlive=false;});
   const win=checkWin(fp);
   if(win){u.winner=win.winner;u.winReason=win.reason;u.status='gameover';}
@@ -514,7 +527,7 @@ async function fbConfirmElim(){
   // Jester special win
   if(elim.role==='jester'){u.winner='jester';u.winReason=`${elim.name} berhasil dihukum — Jester menang!`;u.status='gameover';}
   else{
-    const fp=JSON.parse(JSON.stringify(r.players));fp[eId].isAlive=false;
+    const fp=Object.fromEntries(Object.entries(r.players).map(([k,v])=>[k,{...v}]));fp[eId].isAlive=false;
     const win=checkWin(fp);
     if(win){u.winner=win.winner;u.winReason=win.reason;u.status='gameover';}
     else{

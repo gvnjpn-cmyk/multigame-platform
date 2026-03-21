@@ -9,17 +9,17 @@
   <style>
     :root{--bg:#100808;--glass:#ffffff08;--glass2:#ffffff12;--border:#ffffff14;--border2:#ffffff22;--acc:#f97316;--acc2:#fb923c;--red:#ef4444;--green:#4ade80;--yellow:#fbbf24;--text:#fff7f0;--text2:#fdba74;--text3:#7c2d12}
     *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-    html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;overflow-x:hidden}
+    html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;overflow-x:hidden;-webkit-font-smoothing:antialiased;text-rendering:optimizeSpeed}
     body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse at top,rgba(239,68,68,.1) 0%,transparent 50%),radial-gradient(ellipse at bottom,rgba(249,115,22,.06) 0%,transparent 50%)}
     #app{position:relative;z-index:1;width:100%;max-width:480px;margin:0 auto;padding:20px 16px 80px;min-height:100vh}
     @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
     @keyframes spin{to{transform:rotate(360deg)}}
-    @keyframes pulseDot{0%,100%{transform:scale(.6);opacity:.3}50%{transform:scale(1);opacity:1}}
+    @keyframes pulseDot{0%,100%{opacity:.3}50%{opacity:1}}
     @keyframes bombShake{0%,100%{transform:rotate(0)}20%{transform:rotate(-10deg)}40%{transform:rotate(10deg)}60%{transform:rotate(-10deg)}80%{transform:rotate(10deg)}}
     @keyframes bombPulse{0%,100%{transform:scale(1);text-shadow:0 0 0 #ef4444}50%{transform:scale(1.2);text-shadow:0 0 20px #ef4444}}
     @keyframes explode{0%{transform:scale(1);opacity:1}50%{transform:scale(2);opacity:.5}100%{transform:scale(3);opacity:0}}
     .fade{animation:fadeUp .3s ease both}
-    .card{background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1.5px solid var(--border);border-radius:20px;padding:20px;margin-bottom:14px;position:relative;overflow:hidden}
+    .card{background:rgba(255,255,255,.07);border:1.5px solid var(--border);border-radius:20px;padding:20px;margin-bottom:14px;position:relative;overflow:hidden}
     .card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent)}
     .ph{text-align:center;margin-bottom:20px}
     .ph .ey{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;letter-spacing:2.5px;color:var(--acc2);text-transform:uppercase;background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.3);border-radius:100px;padding:4px 12px;margin-bottom:10px}
@@ -29,7 +29,7 @@
     .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:15px 20px;margin-top:10px;border:none;border-radius:14px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;letter-spacing:.2px;transition:all .2s}
     .btn:disabled{opacity:.35;cursor:not-allowed}.btn:active:not(:disabled){transform:scale(.97)}
     .btn-ora{background:linear-gradient(135deg,var(--acc),#ea580c);color:#fff;box-shadow:0 4px 20px rgba(249,115,22,.35)}
-    .btn-ghost{background:var(--glass);color:var(--text2);border:1.5px solid var(--border2)}
+    .btn-ghost{background:rgba(255,255,255,.07);color:var(--text2);border:1.5px solid var(--border2)}
     .inp{width:100%;padding:13px 16px;background:rgba(255,255,255,.06);border:1.5px solid var(--border2);border-radius:12px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;outline:none;transition:border-color .2s}
     .inp:focus{border-color:var(--acc)}.inp::placeholder{color:var(--text3)}
     .inp-code{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;text-align:center;letter-spacing:10px;text-transform:uppercase;padding:16px}
@@ -39,7 +39,7 @@
     .b-red{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.3)}
     .b-dim{background:rgba(255,255,255,.06);color:#475569;border:1px solid var(--border)}
     .pi{display:flex;align-items:center;justify-content:space-between;padding:11px 15px;margin-top:8px;border-radius:12px;background:rgba(255,255,255,.04);border:1.5px solid var(--border);font-size:13px}
-    .sbar{display:flex;align-items:center;justify-content:space-between;padding:9px 15px;background:var(--glass);border:1px solid var(--border);border-radius:13px;margin-bottom:14px;font-size:11px;color:var(--text2)}
+    .sbar{display:flex;align-items:center;justify-content:space-between;padding:9px 15px;background:rgba(255,255,255,.07);border:1px solid var(--border);border-radius:13px;margin-bottom:14px;font-size:11px;color:var(--text2)}
     .sbar .rnd{color:var(--acc2);font-weight:700;font-family:'Syne',sans-serif}
     .rcode{font-family:'Syne',sans-serif;font-size:48px;font-weight:800;background:linear-gradient(135deg,var(--acc),var(--red));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center;letter-spacing:12px;padding:14px 0}
     /* BOMB */
@@ -64,10 +64,10 @@
     .loader{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;gap:16px}
     .loader-ring{width:44px;height:44px;border-radius:50%;border:3px solid rgba(249,115,22,.2);border-top-color:var(--acc);animation:spin .8s linear infinite}
     .loader p{font-size:12px;color:var(--text3);letter-spacing:2px;font-weight:600;text-transform:uppercase}
-    #toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(100px);background:rgba(16,8,8,.95);backdrop-filter:blur(20px);border:1.5px solid rgba(249,115,22,.4);border-radius:14px;padding:12px 22px;font-size:13px;font-weight:500;color:var(--text);z-index:999;transition:transform .35s cubic-bezier(.4,0,.2,1);max-width:320px;text-align:center}
+    #toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(100px);background:rgba(16,8,8,.95);border:1.5px solid rgba(249,115,22,.4);border-radius:14px;padding:12px 22px;font-size:13px;font-weight:500;color:var(--text);z-index:999;transition:transform .35s cubic-bezier(.4,0,.2,1);max-width:320px;text-align:center}
     #toast.show{transform:translateX(-50%) translateY(0)}
     .count-sel{display:flex;align-items:center;gap:12px;margin-bottom:12px}
-    .count-btn{width:44px;height:44px;border-radius:12px;border:1.5px solid var(--border2);background:var(--glass);color:var(--text);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .count-btn{width:44px;height:44px;border-radius:12px;border:1.5px solid var(--border2);background:rgba(255,255,255,.07);color:var(--text);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
     .count-btn:active{transform:scale(.93)}
     .count-num{flex:1;text-align:center;font-family:'Syne',sans-serif;font-size:36px;font-weight:800;background:linear-gradient(135deg,var(--text),var(--acc2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
   </style>
@@ -92,7 +92,13 @@ function genCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ';let r='';for(let i=0;i<4;i
 function shuffle(a){return[...a].sort(()=>Math.random()-.5);}
 function randSyl(){return SYLLABLES[Math.floor(Math.random()*SYLLABLES.length)];}
 function toast(msg,d=2500){const e=document.getElementById('toast');e.textContent=msg;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),d);}
-function render(h){document.getElementById('app').innerHTML=`<div class="fade">${h}</div>`;}
+function render(h){
+  if(S._rafId)cancelAnimationFrame(S._rafId);
+  S._rafId=requestAnimationFrame(()=>{
+    const app=document.getElementById('app');
+    if(app)app.innerHTML='<div class="fade">'+h+'</div>';
+  });
+}
 function $(id){return document.getElementById(id);}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function saveSession(c,h){try{localStorage.setItem('session_room_'+ROOM_PREFIX,c);localStorage.setItem('session_host_'+ROOM_PREFIX,h?'1':'0');}catch(e){}}
@@ -105,7 +111,14 @@ function stopTimer(){if(S.timerInterval){clearInterval(S.timerInterval);S.timerI
 
 async function fbCreate(name){let code,exists=true;while(exists){code=genCode();const s=await db.ref(`${ROOM_PREFIX}/${code}`).once('value');exists=s.exists()&&s.val().status!=='ended';}const now=Date.now();const syl=randSyl();await db.ref(`${ROOM_PREFIX}/${code}`).set({code,hostId:S.myId,status:'lobby',syllable:syl,currentTurn:null,round:1,history:[],usedWords:[],timerStart:null,createdAt:now,players:{[S.myId]:{name,joinedAt:now,lives:MAX_LIVES,alive:true}}});return code;}
 async function fbJoin(code,name){const s=await db.ref(`${ROOM_PREFIX}/${code}`).once('value');if(!s.exists())throw new Error('Room tidak ditemukan');const r=s.val();if(r.status==='ended')throw new Error('Game sudah berakhir');if(Object.keys(r.players||{}).length>=12)throw new Error('Room penuh (maks 12)');if(r.players&&r.players[S.myId]){await db.ref(`${ROOM_PREFIX}/${code}/players/${S.myId}/name`).set(name);return r;}await db.ref(`${ROOM_PREFIX}/${code}/players/${S.myId}`).set({name,joinedAt:Date.now(),lives:MAX_LIVES,alive:true});return r;}
-function fbListen(code){if(S.unsubFn)S.unsubFn();saveSession(code,S.isHost);const ref=db.ref(`${ROOM_PREFIX}/${code}`);const h=ref.on('value',snap=>{if(!snap.exists())return;S.room=snap.val();renderPhase();});S.unsubFn=()=>ref.off('value',h);}
+function fbListen(code){if(S.unsubFn)S.unsubFn();saveSession(code,S.isHost);const ref=db.ref(`${ROOM_PREFIX}/${code}`);const h=ref.on('value',snap=>{
+      if(!snap.exists())return;
+      const prev=S.room;
+      S.room=snap.val();
+      // Skip re-render jika status & data penting tidak berubah
+      if(prev&&prev.status===S.room.status&&JSON.stringify(prev)===JSON.stringify(S.room))return;
+      renderPhase();
+    });S.unsubFn=()=>ref.off('value',h);}
 async function fbStart(){const r=S.room,pids=Object.keys(r.players);if(pids.length<2){toast('Minimal 2 pemain!');return;}const u={};pids.forEach(id=>{u[`players/${id}/lives`]=MAX_LIVES;u[`players/${id}/alive`]=true;});u.status='game';u.currentTurn=pids[0];u.syllable=randSyl();u.round=1;u.history=[];u.usedWords=[];u.timerStart=Date.now();await db.ref(`${ROOM_PREFIX}/${S.roomCode}`).update(u);}
 
 async function fbSubmit(word){
@@ -135,7 +148,7 @@ async function fbExpired(){
   const u={[`players/${S.myId}/lives`]:newLives};
   if(newLives<=0)u[`players/${S.myId}/alive`]=false;
   // Check win
-  const fp=JSON.parse(JSON.stringify(ps));fp[S.myId].lives=newLives;if(newLives<=0)fp[S.myId].alive=false;
+  const fp=Object.fromEntries(Object.entries(ps).map(([k,v])=>[k,{...v}]));fp[S.myId].lives=newLives;if(newLives<=0)fp[S.myId].alive=false;
   const aliveArr=Object.entries(fp).filter(([,p])=>p.alive);
   if(aliveArr.length<=1){
     const winner=aliveArr[0]?.[0]||null;u.winner=winner;u.winReason=winner?`${fp[winner].name} adalah yang terakhir bertahan!`:'Semua eliminasi!';u.status='ended';clearSession();

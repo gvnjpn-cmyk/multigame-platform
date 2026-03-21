@@ -2,8 +2,11 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
+  <meta name="color-scheme" content="dark">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
   <title>Noctyra Games</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
     :root{
@@ -14,24 +17,24 @@
       --text:#f0f4ff;--text2:#94a3b8;--text3:#475569;
     }
     *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-    html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;overflow-x:hidden}
+    html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;overflow-x:hidden;-webkit-font-smoothing:antialiased;text-rendering:optimizeSpeed}
 
     .bg-orbs{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
-    .orb{position:absolute;border-radius:50%;filter:blur(90px);opacity:.15;animation:orbFloat 14s ease-in-out infinite}
+    .orb{position:absolute;border-radius:50%;filter:blur(60px);opacity:.08;}
     .orb1{width:500px;height:500px;background:var(--accent);top:-150px;left:-150px}
     .orb2{width:400px;height:400px;background:var(--teal);bottom:-100px;right:-100px;animation-delay:-5s}
     .orb3{width:300px;height:300px;background:var(--pink);top:50%;left:50%;animation-delay:-10s}
-    @keyframes orbFloat{0%,100%{transform:translate(0,0)}50%{transform:translate(25px,-25px)}}
+    
 
     #app{position:relative;z-index:1;width:100%;max-width:480px;margin:0 auto;padding:28px 16px 60px}
 
     @keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
-    @keyframes iconBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+    @keyframes iconBounce{0%,40%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
 
     .hub-header{text-align:center;margin-bottom:32px;animation:fadeUp .5s .1s both}
     .hub-badge{
       display:inline-flex;align-items:center;gap:6px;
-      background:var(--glass2);border:1px solid var(--border2);
+      background:rgba(255,255,255,.11);border:1px solid var(--border2);
       border-radius:100px;padding:5px 14px;
       font-size:10px;font-weight:700;letter-spacing:2px;color:var(--teal);
       text-transform:uppercase;margin-bottom:14px;
@@ -53,8 +56,8 @@
     .games-grid{display:flex;flex-direction:column;gap:12px}
 
     .game-card{
-      background:var(--glass);
-      backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+      background:rgba(255,255,255,.07);
+      
       border:1.5px solid var(--border);border-radius:20px;
       padding:18px 18px 14px;cursor:pointer;
       transition:transform .2s,border-color .2s,background .2s;
